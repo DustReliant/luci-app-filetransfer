@@ -11,22 +11,6 @@ local uhttpd = require "luci.http"
 local csrf_token_file = "/tmp/csrf_token.txt"
 local log_file = "/tmp/filetransfer.log"  -- 日志文件路径
 
--- 生成并设置新的 CSRF Token
-function set_csrf_token()
-    -- 生成一个新的 CSRF Token
-    local csrf_token = tostring(os.time()) .. tostring(math.random(100000, 999999))
-    
-    -- 存储 CSRF Token 到临时文件
-    luci.sys.call("echo " .. csrf_token .. " > " .. csrf_token_file)
-    
-    -- 将生成的 CSRF Token 记录到日志文件
-    local log_message = "Generated CSRF Token: " .. csrf_token
-    luci.sys.call("echo " .. log_message .. " > " .. log_file)
-    log_to_file(log_message)  -- 调用 log_to_file 函数写入日志
-
-    return csrf_token
-end
-
 
 -- 记录日志到文件的函数
 function log_to_file(message)
@@ -39,28 +23,23 @@ function log_to_file(message)
     end
 end
 
--- 获取 CSRF Token
-function get_csrf_token()
-    -- 读取并返回 CSRF Token
-    return luci.sys.exec("cat " .. csrf_token_file)
-end
-
--- 清除 CSRF Token 文件
-function clear_csrf_token()
-    luci.sys.call("rm -f " .. csrf_token_file)
-end
-
 -- 设置 CSRF 令牌
 function index()
      -- 主入口页面
-     entry({"admin", "system", "filetransfer"}, firstchild(), translate("FileTransfer"), 89).dependent = false
+     --entry({"admin", "system", "filetransfer"}, firstchild(), translate("FileTransfer"), 89).dependent = false
 
      -- 文件传输页面
-     entry({"admin", "system", "filetransfer", "updownload"}, cbi("updownload"), translate("File Transfer"), 1).leaf = true
+     --entry({"admin", "system", "filetransfer", "updownload"}, cbi("updownload"), translate("File Transfer"), 1).leaf = true
  
      -- 日志页面
-     entry({"admin", "system", "filetransfer", "log"}, cbi("log"), translate("Server Logs"), 2).leaf = true
+     --entry({"admin", "system", "filetransfer", "log"}, cbi("log"), translate("Server Logs"), 2).leaf = true
     
+     entry({"admin", "system", "filetransfer"}, firstchild(), _("文件传输"), 89).dependent = false
+     entry({"admin", "system", "filetransfer", "updownload"}, cbi("updownload"), _("文件传输"), 1)
+     entry({"admin", "system", "filetransfer", "log"}, template("log"), _("操作日志"), 2)
+
+
+
      -- 日志页面相关接口
      entry({"admin", "system", "filetransfer", "startlog"}, call("action_start")).leaf = true
      entry({"admin", "system", "filetransfer", "refresh_log"}, call("action_refresh_log"))
@@ -71,54 +50,6 @@ function index()
      entry({"admin", "system", "filetransfer", "submit"}, call("action_submit")).leaf = true
 
 end
-
--- 页面加载时生成并返回 CSRF Token
-function action_index()
-    -- 生成并存储 CSRF Token
-    local csrf_token = set_csrf_token()
-    luci.dispatcher.context.token = csrf_token  -- 将 token 存储到上下文中
-
-    -- 将 CSRF Token 的创建过程记录到日志
-    local log_message = "CSRF Token set during action_index: " .. csrf_token
-    log_to_file(log_message)  -- 记录到日志
-end
-
-
--- 处理表单提交时验证 CSRF Token
-function action_submit()
-    -- 获取表单中的 CSRF Token
-    local csrf_token_from_form = luci.http.formvalue("csrf_token")
-    -- 获取存储的 CSRF Token
-    local csrf_token_stored = get_csrf_token()
-
-    -- 记录日志
-    local log_file = "/tmp/csrf_log.txt"  -- 日志文件路径，可根据需求修改
-    local log_handle = io.open(log_file, "a")
-    if log_handle then
-        log_handle:write("CSRF Token from form: " .. (csrf_token_from_form or "nil") .. "\n")
-        log_handle:write("CSRF Token stored: " .. (csrf_token_stored or "nil") .. "\n")
-        log_handle:write("Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n")
-        log_handle:write("----\n")
-        log_handle:close()
-    end
-
-    -- 如果 CSRF Token 不匹配，拒绝请求
-    if csrf_token_from_form ~= csrf_token_stored then
-        luci.http.status(403, "Forbidden Invalid.")
-        luci.http.write("Invalid CSRF token.")
-        return
-    end
-
-    -- 如果验证通过，继续处理表单
-    local message = luci.http.formvalue("message")
-    luci.http.write("Form submitted successfully with message: " .. message)
-
-    -- 清理临时 CSRF Token 文件
-    clear_csrf_token()
-end
-
-
-
 
 function action_start()
 	luci.http.prepare_content("application/json")

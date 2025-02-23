@@ -1,283 +1,193 @@
 local fs = require "nixio.fs"
 local http = luci.http
 local sys = require "luci.sys"
+local csrf = require "luci.csrf"
+local i18n = require "luci.i18n"
 
--- 设置文件上传目录
-local dir = "/tmp/upload/"
-fs.mkdir(dir)
+-- 安全配置常量
+local CONFIG = {
+    UPLOAD_DIR = "/mnt/secure_uploads",  -- 更安全的持久化目录
+    MAX_SIZE = 50 * 1024 * 1024,         -- 50MB限制
+    ALLOWED_TYPES = { "txt", "log", "conf", "ipk" }, -- 文件类型白名单
+    LOG_FILE = "/var/log/filetransfer.log"  -- 持久化日志
+}
 
--- CSRF Token 文件路径
-local csrf_token_file = "/tmp/csrf_token.txt"
+-- 初始化安全目录
+fs.mkdir(CONFIG.UPLOAD_DIR, 0750)
+sys.call("chown www-data:www-data "..CONFIG.UPLOAD_DIR)
 
--- 日志文件路径
-local log_file = "/tmp/upload/operation_log.txt"
-if not fs.access(log_file) then
-    fs.writefile(log_file, "") -- 初始化日志文件
-end
-
--- 日志记录函数
-local function write_log(message)
-    local log_entry = os.date("[%Y-%m-%d %H:%M:%S] ") .. message .. "\n"
-    local f = io.open(log_file, "a")
-    if f then
-        f:write(log_entry)
-        f:close()
+-- 日志记录函数（系统日志+文件日志）
+local function log_event(action, file, status)
+    local user = luci.dispatcher.context.authuser or "unknown"
+    local msg = string.format(
+        "用户:%s 操作:%s 文件:%s 状态:%s",
+        user, action, file, status
+    )
+    
+    -- 写入系统日志
+    sys.exec("logger -t filetransfer '%s'" % msg)
+    
+    -- 写入文件日志
+    local fd = io.open(CONFIG.LOG_FILE, "a")
+    if fd then
+        fd:write(os.date("[%Y-%m-%d %H:%M:%S] ")..msg.."\n")
+        fd:close()
     end
 end
 
--- 生成或获取 CSRF Token
-local function get_or_set_csrf_token()
-    if not fs.access(csrf_token_file) then
-        local token = luci.dispatcher.context.token --tostring(os.time()) .. tostring(math.random(100000, 999999))
-        fs.writefile(csrf_token_file, token)
-        return token
-    end
-    return fs.readfile(csrf_token_file):gsub("\n", "")
+-- 文件名消毒函数
+local function sanitize_filename(name)
+    return name:gsub("[^%w%.%-_]", ""):gsub("%.%.+", ".")
 end
 
--- 验证 CSRF Token
-local function validate_csrf_token(token)
-    if not token or #token == 0 then
-        write_log("CSRF token missing or empty.")
-        return false
-    end
-    local server_token = get_or_set_csrf_token()
-    if token ~= server_token then
-        write_log("CSRF token mismatch: expected " .. server_token .. ", got " .. token)
-        return false
-    end
-    return true
-end
-
--- 页面初始化时加载 CSRF Token
-local csrf_token = get_or_set_csrf_token()
---luci.dispatcher.context.token = csrf_token
-
--- 上传表单
-local ful = SimpleForm("upload", translate("Upload"), nil)
+-- 原生CSRF集成 --------------------------------------------------
+local ful = SimpleForm("upload", translate("文件上传"))
+ful:section(SimpleSection, "", translate("上传文件到安全目录"))
 ful.reset = false
 ful.submit = false
 
-local sul = ful:section(SimpleSection, "", translate("Upload file to '/tmp/upload/'"))
-local fu = sul:option(FileUpload, "")
+-- 添加CSRF令牌
+ful:section(SimpleSection).template = "cbi/csrftoken"
+
+-- 文件上传处理
+local fu = ful:field(FileUpload, "ulfile")
 fu.template = "cbi/other_upload"
 
-local um = sul:option(DummyValue, "", nil)
-um.template = "cbi/other_dvalue"
-
--- 上传处理
+-- 安全上传处理
 http.setfilehandler(function(meta, chunk, eof)
-    -- 打印 meta, chunk, eof 到前端页面
-    local log_message = "Meta: " .. tostring(meta) .. ", Chunk: " .. tostring(chunk) .. ", EOF: " .. tostring(eof)
-    um.value = log_message  -- 直接显示在前端页面
-    write_log(log_message)  -- 后台日志打印
+    if not csrf.verify() then
+        http.status(403, "CSRF验证失败")
+        log_event("UPLOAD", "N/A", "CSRF_FAIL")
+        return
+    end
+
+    local filename = sanitize_filename(meta and meta.file or "")
+    local filepath = CONFIG.UPLOAD_DIR.."/"..filename
+    
+    -- 类型验证
+    local ext = filename:match("%.(%w+)$")
+    if not ext or not table.contains(CONFIG.ALLOWED_TYPES, ext:lower()) then
+        log_event("UPLOAD", filename, "TYPE_BLOCKED")
+        http.status(415, "不支持的文件类型")
+        return
+    end
+
+    -- 大小验证
+    if meta and meta.size > CONFIG.MAX_SIZE then
+        log_event("UPLOAD", filename, "SIZE_EXCEED")
+        http.status(413, "文件过大")
+        return
+    end
+
+    -- 分块写入
     local fd
     if meta and not fd then
-        fd = io.open(dir .. meta.file, "w")
+        fd = nixio.open(filepath, "w", 0600)
         if not fd then
-            local msg = translate("Failed to open file for writing: ") .. meta.file
-            um.value = msg
-            write_log(msg)
+            log_event("UPLOAD", filename, "OPEN_FAIL")
             return
         end
+        fd:lock("excl")
     end
+
     if chunk and fd then
         fd:write(chunk)
     end
+
     if eof and fd then
         fd:close()
-        local msg = translate("File saved to ") .. dir .. meta.file
-        um.value = msg
-        write_log(msg)
+        log_event("UPLOAD", filename, "SUCCESS")
     end
 end)
 
--- 下载表单
-local fdl = SimpleForm("download", translate("Download"), nil)
+-- 安全下载处理 --------------------------------------------------
+local fdl = SimpleForm("download", translate("文件下载"))
+fdl:section(SimpleSection, "", translate("从安全目录下载文件"))
 fdl.reset = false
 fdl.submit = false
 
-local sdl = fdl:section(SimpleSection, "", translate("Download file: input file/dir path"))
-local fd = sdl:option(FileUpload, "")
-fd.template = "cbi/other_download"
+-- 下载路径输入
+local dl = fdl:field(Value, "dlfile", translate("文件路径"))
+dl.template = "cbi/other_download"
 
-local dm = sdl:option(DummyValue, "", nil)
-dm.template = "cbi/other_dvalue"
-
--- 文件下载函数
-local function download_file()
-    local sPath = http.formvalue("dlfile")
-    if not sPath or #sPath == 0 then
-        local msg = translate("No file path specified for download.")
-        dm.value = msg
-        write_log(msg)
-        return
-    end
-
-    local sFile = fs.basename(sPath)
-    local fd
-
-    if fs.stat(sPath, "type") == "directory" then
-        fd = io.popen(string.format('tar -C "%s" -cz .', sPath), "r")
-        sFile = sFile .. ".tar.gz"
-    else
-        fd = io.open(sPath, "r")
-    end
-
-    if not fd then
-        local msg = translate("Couldn't open file: ") .. sPath
-        dm.value = msg
-        write_log(msg)
-        return
-    end
-
-    dm.value = nil
-    http.header('Content-Disposition', string.format('attachment; filename="%s"', sFile))
-    http.prepare_content("application/octet-stream")
-
-    while true do
-        local block = fd:read(8192)
-        if not block then break end
-        http.write(block)
-    end
-
-    fd:close()
-    write_log("File downloaded successfully: " .. sPath)
-end
-
--- 表单提交处理
-if http.formvalue("upload") then
-    -- 获取 CSRF Token
-    local csrf_token_from_form = http.formvalue("csrf_token")
-    if not csrf_token_from_form or #csrf_token_from_form == 0 then
-        um.value = translate("CSRF token is missing.")
-        write_log("CSRF token is missing for upload action.")
-    elseif not validate_csrf_token(csrf_token_from_form) then
-        um.value = translate("Invalid CSRF token!")
-        write_log("CSRF token validation failed for upload action.")
-    else
-        -- 获取上传文件字段
-        local upload_file = http.formvalue("ulfile")
-        if not upload_file or #upload_file == 0 then
-            local msg = translate("No file specified for upload.")
-            um.value = msg
-            write_log(msg)  -- 记录日志
-        end
-    end
-elseif http.formvalue("download") then
-    -- 获取下载路径字段
-    local download_path = http.formvalue("dlfile")
+function fdl.handle(self, state, data)
+    if state == FORM_VALID then
+        local path = data.dlfile
+        local safe_path = CONFIG.UPLOAD_DIR.."/"..sanitize_filename(path)
         
-    -- 路径为空时的处理逻辑
-    if not download_path or #download_path == 0 then
-        local msg = translate("No file path specified for download.")
-        dm.value = msg  -- 将错误信息显示在界面
-        write_log(msg)  -- 记录日志
-    else
-        -- 检查文件是否存在
-        if not nixio.fs.stat(download_path) then
-            local msg = translate("Specified file or directory does not exist: ") .. download_path
-            dm.value = msg  -- 将错误信息显示在界面
-            write_log(msg)  -- 记录日志
-        else
-            -- 下载文件
-            download_file()
+        if not fs.stat(safe_path) then
+            log_event("DOWNLOAD", path, "NOT_FOUND")
+            return nil, "文件不存在"
+        end
+
+        http.header('Content-Disposition', 'attachment; filename="%s"'%fs.basename(safe_path))
+        http.prepare_content(fs.mimetype(safe_path) or "application/octet-stream")
+        
+        local fd = nixio.open(safe_path, "r")
+        if fd then
+            fd:sendfile(http.getsocket())
+            fd:close()
+            log_event("DOWNLOAD", path, "SUCCESS")
+            return true
         end
     end
 end
 
-
-
--- 获取上传目录文件列表
-local inits = {}
-for f in fs.glob("/tmp/upload/*") do
+-- 文件管理模块 --------------------------------------------------
+local file_list = {}
+for f in fs.glob(CONFIG.UPLOAD_DIR.."/*") do
     local attr = fs.stat(f)
     if attr then
-        table.insert(inits, {
+        table.insert(file_list, {
             name = fs.basename(f),
-            mtime = os.date("%Y-%m-%d %H:%M:%S", attr.mtime),
-            modestr = attr.modestr,
-            size = tostring(attr.size),
+            size = attr.size,
+            mtime = os.date("%Y-%m-%d %H:%M:%S", attr.mtime)
         })
     end
 end
 
--- 文件列表显示
-local form = SimpleForm("filelist", translate("Upload file list"), nil)
-form.reset = false
-form.submit = false
+local flist = SimpleForm("filelist", translate("文件管理"))
+local fl = flist:section(Table, file_list)
 
-local tb = form:section(Table, inits)
-local nm = tb:option(DummyValue, "name", translate("File name"))
-local mt = tb:option(DummyValue, "mtime", translate("Modify time"))
-local ms = tb:option(DummyValue, "modestr", translate("Mode string"))
-local sz = tb:option(DummyValue, "size", translate("Size"))
+fl:option(DummyValue, "name", translate("文件名"))
+fl:option(DummyValue, "size", translate("大小"))
+fl:option(DummyValue, "mtime", translate("修改时间"))
 
--- 安装 .ipk 文件
-function IsIpkFile(name)
-    name = name or ""
-    local ext = string.lower(string.sub(name, -4, -1))
-    return ext == ".ipk"
-end
-
--- 安装按钮逻辑
-btnis = tb:option(Button, "install", translate("Install"))
-btnis.template = "cbi/other_button"
-btnis.render = function(self, section, scope)
-    if not inits[section] then return false end
-    if IsIpkFile(inits[section].name) then
-        scope.display = ""  -- 显示安装按钮
+-- 安全安装按钮
+local btn_install = fl:option(Button, "install", translate("安装"))
+btn_install.render = function(self, section, scope)
+    if file_list[section].name:match("%.ipk$") then
+        Button.render(self, section, scope)
     else
-        scope.display = "none"  -- 隐藏按钮
+        scope.display = "none"
     end
-    self.inputstyle = "apply"  -- 按钮样式
-    Button.render(self, section, scope)
 end
 
--- 安装 .ipk 文件的操作
-btnis.write = function(self, section)
-    local filename = inits[section].name
-    if not IsIpkFile(filename) then
-        return
-    end
-
-    -- 执行安装命令
-    local install_cmd = "opkg install /tmp/upload/" .. filename
-    local result = luci.sys.call(install_cmd)
-
-    if result == 0 then
-        local msg = translate("IPK installation successful: ") .. filename
-        write_log(msg)
-        um.value = msg
+btn_install.write = function(self, section)
+    local fname = file_list[section].name
+    local cmd = "opkg verify %s/%s && opkg install %s/%s" % {
+        CONFIG.UPLOAD_DIR, fname,
+        CONFIG.UPLOAD_DIR, fname
+    }
+    
+    local res = sys.call(cmd)
+    if res == 0 then
+        log_event("INSTALL", fname, "SUCCESS")
+        return true
     else
-        local msg = translate("IPK installation failed: ") .. filename
-        write_log(msg)
-        um.value = msg
+        log_event("INSTALL", fname, "FAILED")
+        return false
     end
 end
 
--- 删除文件按钮
-local btnrm = tb:option(Button, "remove", translate("Remove"))
-btnrm.inputstyle = "remove"
-btnrm.write = function(self, section)
-    local filename = inits[section].name
-    if fs.unlink(dir .. filename) then
-        table.remove(inits, section)
-        write_log("File removed: " .. filename)
-    end
+-- 日志查看模块 --------------------------------------------------
+local log_form = SimpleForm("log", translate("操作日志"))
+local log_view = log_form:section(SimpleSection)
+local log_content = log_view:option(TextValue, "_log")
+log_content.rows = 20
+log_content.readonly = true
+log_content.cfgvalue = function()
+    return fs.readfile(CONFIG.LOG_FILE) or ""
 end
 
--- 日志表单
-local log_form = SimpleForm("log", translate("Operation Log"), nil)
-log_form.reset = false
-log_form.submit = false
-
-local log_section = log_form:section(SimpleSection, "", translate("Recent Logs"))
-local log_view = log_section:option(TextValue, "log")
-log_view.rows = 10
-log_view.readonly = true
-log_view.cfgvalue = function()
-    return fs.readfile(log_file) or ""
-end
-
-return ful, fdl, form, log_form
+return ful, fdl, flist, log_form
