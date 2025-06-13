@@ -32,11 +32,10 @@ define Build/Configure
 endef
 
 define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) \
-		PO_DIR="$(CURDIR)/po" \
-		PO_LANGUAGES="en zh-cn" \
-		PO_TEMPLATE="$(CURDIR)/po/templates/filetransfer.pot" \
-		PO_PACKAGE="$(PKG_NAME)"
+	$(foreach lang,en zh-cn, \
+		po2lmo $(CURDIR)/po/$(lang)/filetransfer.po \
+		$(PKG_BUILD_DIR)/filetransfer.$(lang).lmo; \
+	)
 endef
 
 define Package/$(PKG_NAME)/install
@@ -48,7 +47,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./luasrc/model/cbi/updownload.lua $(1)/usr/lib/lua/luci/model/cbi/updownload.lua
 	$(INSTALL_DATA) ./luasrc/model/cbi/log.lua $(1)/usr/lib/lua/luci/model/cbi/log.lua
 	$(INSTALL_DATA) ./luasrc/controller/filetransfer.lua $(1)/usr/lib/lua/luci/controller/filetransfer.lua
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/po/*.lmo $(1)/usr/lib/lua/luci/i18n/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/*.lmo $(1)/usr/lib/lua/luci/i18n/
 	$(CP) $(PKG_BUILD_DIR)/root/* $(1)/
 	$(INSTALL_DATA) ./luasrc/view/cbi/* $(1)/usr/lib/lua/luci/view/cbi/
 endef
