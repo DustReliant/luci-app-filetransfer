@@ -1,7 +1,6 @@
 local fs = require "nixio.fs"
 local http = luci.http
 local sys = require "luci.sys"
-local csrf = require "luci.csrf"
 local i18n = require "luci.i18n"
 
 -- 安全配置常量
@@ -46,21 +45,12 @@ ful:section(SimpleSection, "", translate("上传文件到安全目录"))
 ful.reset = false
 ful.submit = false
 
--- 添加CSRF令牌
-ful:section(SimpleSection).template = "cbi/csrftoken"
-
 -- 文件上传处理
 local fu = ful:field(FileUpload, "ulfile")
 fu.template = "cbi/other_upload"
 
 -- 安全上传处理
 http.setfilehandler(function(meta, chunk, eof)
-    if not csrf.verify() then
-        http.status(403, "CSRF验证失败")
-        log_event("UPLOAD", "N/A", "CSRF_FAIL")
-        return
-    end
-
     local filename = sanitize_filename(meta and meta.file or "")
     local filepath = CONFIG.UPLOAD_DIR.."/"..filename
     
