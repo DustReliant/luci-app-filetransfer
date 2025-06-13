@@ -32,10 +32,8 @@ define Build/Configure
 endef
 
 define Build/Compile
-	$(foreach lang,en zh-cn, \
-		$(STAGING_DIR_HOST)/bin/po2lmo $(CURDIR)/po/$(lang)/filetransfer.po \
-		$(PKG_BUILD_DIR)/filetransfer.$(lang).lmo; \
-	)
+	/usr/bin/po2lmo $(CURDIR)/po/en/filetransfer.po $(PKG_BUILD_DIR)/filetransfer.en.lmo
+	/usr/bin/po2lmo $(CURDIR)/po/zh-cn/filetransfer.po $(PKG_BUILD_DIR)/filetransfer.zh-cn.lmo
 endef
 
 define Package/$(PKG_NAME)/install
