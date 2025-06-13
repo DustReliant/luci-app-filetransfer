@@ -33,7 +33,7 @@ endef
 
 define Build/Compile
 	$(foreach lang,en zh-cn, \
-		po2lmo $(CURDIR)/po/$(lang)/filetransfer.po \
+		$(STAGING_DIR_HOST)/bin/po2lmo $(CURDIR)/po/$(lang)/filetransfer.po \
 		$(PKG_BUILD_DIR)/filetransfer.$(lang).lmo; \
 	)
 endef
