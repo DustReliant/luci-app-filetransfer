@@ -5,12 +5,27 @@ module("luci.controller.filetransfer", package.seeall)
 -- 在控制器或页面的头部加载翻译
 local translate = require "luci.i18n".translate
 local sys = require "luci.sys"
-local uhttpd = require "luci.http"
+local http = require "luci.http"
+local util = require "luci.util"
+local fs = require "nixio.fs"
+local json = require "luci.jsonc"
 
 -- CSRF Token 存储路径
 local csrf_token_file = "/tmp/csrf_token.txt"
 local log_file = "/tmp/filetransfer.log"  -- 日志文件路径
 
+-- 配置常量
+local UPLOAD_DIR = "/tmp/upload/"
+local MAX_FILE_SIZE = 50 * 1024 * 1024  -- 50MB
+local ALLOWED_EXTENSIONS = {
+    ipk = true,
+    tar = true,
+    gz = true,
+    zip = true,
+    txt = true,
+    conf = true,
+    json = true
+}
 
 -- 记录日志到文件的函数
 function log_to_file(message)
@@ -21,6 +36,60 @@ function log_to_file(message)
     else
         print("Error opening log file")
     end
+end
+
+-- 检查 CSRF Token
+local function check_csrf()
+    -- 首先尝试使用系统自带的 CSRF 验证
+    if luci.csrf and luci.csrf.check_token then
+        return luci.csrf.check_token()
+    end
+    
+    -- 如果系统没有 CSRF 验证，使用自定义实现
+    local token = http.getcookie("csrf_token")
+    local form_token = http.formvalue("csrf_token")
+    
+    if not token or not form_token or token ~= form_token then
+        return false
+    end
+    
+    return true
+end
+
+-- 生成 CSRF Token
+local function generate_csrf_token()
+    local token = util.urandom(32)
+    http.setcookie("csrf_token", token)
+    return token
+end
+
+-- 检查文件类型
+local function check_file_type(filename)
+    local ext = filename:match("%.([^%.]+)$")
+    return ext and ALLOWED_EXTENSIONS[ext:lower()]
+end
+
+-- 检查文件大小
+local function check_file_size(size)
+    return size and size <= MAX_FILE_SIZE
+end
+
+-- 安全地获取文件名
+local function sanitize_filename(filename)
+    -- 移除路径信息
+    filename = filename:match("([^/\\]+)$")
+    -- 移除特殊字符
+    filename = filename:gsub("[^%w%.%-_]", "")
+    return filename
+end
+
+-- 确保上传目录存在并有正确的权限
+local function ensure_upload_dir()
+    if not fs.stat(UPLOAD_DIR) then
+        fs.mkdir(UPLOAD_DIR)
+    end
+    -- 设置目录权限为 755
+    fs.chmod(UPLOAD_DIR, 755)
 end
 
 -- 设置 CSRF 令牌
@@ -48,6 +117,13 @@ function index()
      entry({"admin", "system", "filetransfer", "log_level"}, call("action_log_level"))
      entry({"admin", "system", "filetransfer", "switch_log"}, call("action_switch_log"))
      entry({"admin", "system", "filetransfer", "submit"}, call("action_submit")).leaf = true
+
+     -- 文件操作相关接口
+     entry({"admin", "system", "filetransfer", "upload"}, call("action_upload")).leaf = true
+     entry({"admin", "system", "filetransfer", "download"}, call("action_download")).leaf = true
+     entry({"admin", "system", "filetransfer", "list"}, call("action_list")).leaf = true
+     entry({"admin", "system", "filetransfer", "delete"}, call("action_delete")).leaf = true
+     entry({"admin", "system", "filetransfer", "install_ipk"}, call("action_install_ipk")).leaf = true
 
 end
 
@@ -200,4 +276,197 @@ function action_switch_log()
 	luci.http.write_json({
 		info = info;
 	})
+end
+
+-- 文件上传处理函数
+function action_upload()
+    -- 检查 CSRF Token
+    if not check_csrf() then
+        http.status(403, "CSRF token validation failed")
+        return
+    end
+    
+    -- 获取上传的文件
+    local file = http.formvalue("file")
+    local filename = http.formvalue("filename")
+    
+    if not file or not filename then
+        http.status(400, "Bad Request")
+        return
+    end
+    
+    -- 安全处理文件名
+    filename = sanitize_filename(filename)
+    if not filename then
+        http.status(400, "Invalid filename")
+        return
+    end
+    
+    -- 检查文件类型
+    if not check_file_type(filename) then
+        http.status(400, "File type not allowed")
+        return
+    end
+    
+    -- 检查文件大小
+    if not check_file_size(file:len()) then
+        http.status(413, "File too large")
+        return
+    end
+    
+    -- 保存文件
+    local f = io.open(UPLOAD_DIR .. filename, "w")
+    if f then
+        f:write(file)
+        f:close()
+        log_to_file("File uploaded: " .. filename)
+        http.write_json({status = "success", path = UPLOAD_DIR .. filename})
+    else
+        http.status(500, "Failed to save file")
+    end
+end
+
+-- 文件下载处理函数
+function action_download()
+    -- 检查 CSRF Token
+    if not check_csrf() then
+        http.status(403, "CSRF token validation failed")
+        return
+    end
+    
+    local filename = http.formvalue("filename")
+    if not filename then
+        http.status(400, "Bad Request")
+        return
+    end
+    
+    -- 安全处理文件名
+    filename = sanitize_filename(filename)
+    if not filename then
+        http.status(400, "Invalid filename")
+        return
+    end
+    
+    local path = UPLOAD_DIR .. filename
+    if not fs.stat(path) then
+        http.status(404, "File not found")
+        return
+    end
+    
+    -- 设置下载头
+    http.header("Content-Disposition", "attachment; filename=" .. filename)
+    http.header("Content-Type", "application/octet-stream")
+    
+    -- 发送文件
+    local f = io.open(path, "r")
+    if f then
+        http.write(f:read("*all"))
+        f:close()
+        log_to_file("File downloaded: " .. filename)
+    else
+        http.status(500, "Failed to read file")
+    end
+end
+
+-- 文件列表获取函数
+function action_list()
+    -- 检查 CSRF Token
+    if not check_csrf() then
+        http.status(403, "CSRF token validation failed")
+        return
+    end
+    
+    local files = {}
+    local dir = io.popen("ls -l " .. UPLOAD_DIR)
+    if dir then
+        for line in dir:lines() do
+            local file = {}
+            file.name = line:match("[^%s]+$")
+            file.size = line:match("(%d+)")
+            file.date = line:match("%w+%s+%d+%s+%d+:%d+")
+            if file.name and file.name ~= "." and file.name ~= ".." then
+                table.insert(files, file)
+            end
+        end
+        dir:close()
+    end
+    
+    http.write_json(files)
+end
+
+-- 文件删除函数
+function action_delete()
+    -- 检查 CSRF Token
+    if not check_csrf() then
+        http.status(403, "CSRF token validation failed")
+        return
+    end
+    
+    local filename = http.formvalue("filename")
+    if not filename then
+        http.status(400, "Bad Request")
+        return
+    end
+    
+    -- 安全处理文件名
+    filename = sanitize_filename(filename)
+    if not filename then
+        http.status(400, "Invalid filename")
+        return
+    end
+    
+    local path = UPLOAD_DIR .. filename
+    if not fs.stat(path) then
+        http.status(404, "File not found")
+        return
+    end
+    
+    if fs.unlink(path) then
+        log_to_file("File deleted: " .. filename)
+        http.write_json({status = "success"})
+    else
+        http.status(500, "Failed to delete file")
+    end
+end
+
+-- 安装 IPK 文件
+function action_install_ipk()
+    -- 检查 CSRF Token
+    if not check_csrf() then
+        http.status(403, "CSRF token validation failed")
+        return
+    end
+    
+    local filename = http.formvalue("filename")
+    if not filename then
+        http.status(400, "Bad Request")
+        return
+    end
+    
+    -- 安全处理文件名
+    filename = sanitize_filename(filename)
+    if not filename then
+        http.status(400, "Invalid filename")
+        return
+    end
+    
+    if not filename:match("%.ipk$") then
+        http.status(400, "Not an IPK file")
+        return
+    end
+    
+    local path = UPLOAD_DIR .. filename
+    if not fs.stat(path) then
+        http.status(404, "File not found")
+        return
+    end
+    
+    -- 安装 IPK
+    local result = sys.exec("opkg install " .. path)
+    if result:match("^Installing") then
+        log_to_file("IPK installed: " .. filename)
+        http.write_json({status = "success", message = result})
+    else
+        http.status(500, "Failed to install IPK: " .. result)
+    end
 end

@@ -1,0 +1,197 @@
+
+<%+header%>
+
+<h2><%:文件传输%></h2>
+
+<div class="cbi-section">
+    <h3><%:文件上传%></h3>
+    <div class="cbi-section-node">
+        <form id="upload-form" method="post" enctype="multipart/form-data" action="<%=luci.dispatcher.build_url("admin/system/filetransfer/upload")%>">
+            <input type="hidden" name="csrf_token" value="<%=luci.csrf and luci.csrf.get_token() or ""%>" />
+            <div class="cbi-value">
+                <label class="cbi-value-title"><%:选择文件%></label>
+                <div class="cbi-value-field">
+                    <input type="file" name="file" id="file-input" />
+                    <div class="cbi-value-description">
+                        <%:支持的文件类型：ipk, tar, gz, zip, txt, conf, json%>
+                        <br />
+                        <%:最大文件大小：50MB%>
+                    </div>
+                </div>
+            </div>
+            <div class="cbi-value cbi-value-last">
+                <div class="cbi-value-field">
+                    <input type="submit" class="cbi-button cbi-button-apply" value="<%:上传%>" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="cbi-section">
+    <h3><%:文件列表%></h3>
+    <div class="cbi-section-node">
+        <div id="file-list">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th><%:文件名%></th>
+                        <th><%:大小%></th>
+                        <th><%:修改时间%></th>
+                        <th><%:操作%></th>
+                    </tr>
+                </thead>
+                <tbody id="file-list-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    // 获取 CSRF Token
+    function getCsrfToken() {
+        return document.querySelector('input[name="csrf_token"]').value;
+    }
+    
+    // 刷新文件列表
+    function refreshFileList() {
+        XHR.get('<%=luci.dispatcher.build_url("admin/system/filetransfer/list")%>', {
+            responseType: 'json',
+            headers: {
+                'X-CSRF-Token': getCsrfToken()
+            }
+        }, function(xhr, json) {
+            var tbody = document.getElementById('file-list-body');
+            tbody.innerHTML = '';
+            
+            if (!json || json.length === 0) {
+                var tr = document.createElement('tr');
+                var td = document.createElement('td');
+                td.colSpan = 4;
+                td.textContent = '<%:没有文件%>';
+                td.style.textAlign = 'center';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                return;
+            }
+            
+            json.forEach(function(file) {
+                var tr = document.createElement('tr');
+                
+                // 文件名
+                var tdName = document.createElement('td');
+                tdName.textContent = file.name;
+                tr.appendChild(tdName);
+                
+                // 文件大小
+                var tdSize = document.createElement('td');
+                tdSize.textContent = formatFileSize(file.size);
+                tr.appendChild(tdSize);
+                
+                // 修改时间
+                var tdDate = document.createElement('td');
+                tdDate.textContent = file.date;
+                tr.appendChild(tdDate);
+                
+                // 操作按钮
+                var tdActions = document.createElement('td');
+                
+                // 下载按钮
+                var downloadBtn = document.createElement('button');
+                downloadBtn.className = 'btn';
+                downloadBtn.textContent = '<%:下载%>';
+                downloadBtn.onclick = function() {
+                    window.location.href = '<%=luci.dispatcher.build_url("admin/system/filetransfer/download")%>?filename=' + 
+                        encodeURIComponent(file.name) + '&csrf_token=' + encodeURIComponent(getCsrfToken());
+                };
+                tdActions.appendChild(downloadBtn);
+                
+                // 删除按钮
+                var deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn';
+                deleteBtn.textContent = '<%:删除%>';
+                deleteBtn.onclick = function() {
+                    if (confirm('<%:确定要删除此文件吗？%>')) {
+                        XHR.post('<%=luci.dispatcher.build_url("admin/system/filetransfer/delete")%>', {
+                            data: { 
+                                filename: file.name,
+                                csrf_token: getCsrfToken()
+                            }
+                        }, function(xhr, json) {
+                            if (json && json.status === 'success') {
+                                refreshFileList();
+                            } else {
+                                alert('<%:删除失败%>');
+                            }
+                        });
+                    }
+                };
+                tdActions.appendChild(deleteBtn);
+                
+                // 如果是 IPK 文件，添加安装按钮
+                if (file.name.endsWith('.ipk')) {
+                    var installBtn = document.createElement('button');
+                    installBtn.className = 'btn';
+                    installBtn.textContent = '<%:安装%>';
+                    installBtn.onclick = function() {
+                        if (confirm('<%:确定要安装此 IPK 文件吗？%>')) {
+                            XHR.post('<%=luci.dispatcher.build_url("admin/system/filetransfer/install_ipk")%>', {
+                                data: { 
+                                    filename: file.name,
+                                    csrf_token: getCsrfToken()
+                                }
+                            }, function(xhr, json) {
+                                if (json && json.status === 'success') {
+                                    alert(json.message || '<%:安装完成%>');
+                                } else {
+                                    alert('<%:安装失败%>');
+                                }
+                            });
+                        }
+                    };
+                    tdActions.appendChild(installBtn);
+                }
+                
+                tr.appendChild(tdActions);
+                tbody.appendChild(tr);
+            });
+        });
+    }
+    
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        var k = 1024;
+        var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // 页面加载完成后刷新文件列表
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshFileList();
+        
+        // 监听文件上传表单提交
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(this);
+            XHR.post(this.action, {
+                data: formData,
+                headers: {
+                    'X-CSRF-Token': getCsrfToken()
+                }
+            }, function(xhr, json) {
+                if (json && json.status === 'success') {
+                    alert('<%:文件上传成功%>');
+                    refreshFileList();
+                } else {
+                    alert('<%:文件上传失败%>');
+                }
+            });
+        });
+    });
+</script>
+
+<%+footer%> 

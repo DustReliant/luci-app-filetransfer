@@ -1,129 +1,129 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
-"Language: zh_CN\n"
+"Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain\n"
 
 msgid "FileTransfer"
-msgstr "文件传输"
+msgstr "File Transfer"
 
 msgid "filetransfer"
-msgstr "文件传输"
+msgstr "File Transfer"
 
 msgid "Upload"
-msgstr "上传"
+msgstr "Upload"
 
 msgid "Upload file to '/tmp/upload/'"
-msgstr "上传文件到'/tmp/upload/'"
+msgstr "Upload file to '/tmp/upload/'"
 
 msgid "Download"
-msgstr "下载"
+msgstr "Download"
 
 msgid "Download file"
-msgstr "下载文件"
+msgstr "Download file"
 
 msgid "Couldn't open file: "
-msgstr "无法打开文件："
+msgstr "Couldn't open file: "
 
 msgid "Create upload file error."
-msgstr "文件上传失败。"
+msgstr "Failed to create upload file."
 
 msgid "File saved to"
-msgstr "文件已保存到"
+msgstr "File saved to"
 
 msgid "No specify upload file."
-msgstr "未指定要上传的文件。"
+msgstr "No file specified for upload."
 
 msgid "Upload file list"
-msgstr "上传文件列表"
+msgstr "Upload file list"
 
 msgid "File name"
-msgstr "文件名"
+msgstr "File name"
 
 msgid "Modify time"
-msgstr "修改时间"
+msgstr "Modify time"
 
 msgid "Mode string"
-msgstr "权限"
+msgstr "Permissions"
 
 msgid "Size"
-msgstr "大小"
+msgstr "Size"
 
 msgid "Remove"
-msgstr "移除"
+msgstr "Remove"
 
 msgid "Install"
-msgstr "安装"
+msgstr "Install"
 
 msgid "Upload file:"
-msgstr "上传文件："
+msgstr "Upload file:"
 
 msgid "Download file:"
-msgstr "下载文件："
+msgstr "Download file:"
 
 msgid "Select file"
-msgstr "选择文件"
+msgstr "Select file"
 
 msgid "Supported file types: ipk, tar, gz, zip, txt, conf, json"
-msgstr "支持的文件类型：ipk, tar, gz, zip, txt, conf, json"
+msgstr "Supported file types: ipk, tar, gz, zip, txt, conf, json"
 
 msgid "Maximum file size: 50MB"
-msgstr "最大文件大小：50MB"
+msgstr "Maximum file size: 50MB"
 
 msgid "No files"
-msgstr "没有文件"
+msgstr "No files"
 
 msgid "Are you sure you want to delete this file?"
-msgstr "确定要删除此文件吗？"
+msgstr "Are you sure you want to delete this file?"
 
 msgid "Delete failed"
-msgstr "删除失败"
+msgstr "Delete failed"
 
 msgid "Are you sure you want to install this IPK file?"
-msgstr "确定要安装此 IPK 文件吗？"
+msgstr "Are you sure you want to install this IPK file?"
 
 msgid "Installation complete"
-msgstr "安装完成"
+msgstr "Installation complete"
 
 msgid "Installation failed"
-msgstr "安装失败"
+msgstr "Installation failed"
 
 msgid "File upload successful"
-msgstr "文件上传成功"
+msgstr "File upload successful"
 
 msgid "File upload failed"
-msgstr "文件上传失败"
+msgstr "File upload failed"
 
 msgid "Operation Logs"
-msgstr "操作日志"
+msgstr "Operation Logs"
 
 msgid "File Transfer"
-msgstr "文件传输"
+msgstr "File Transfer"
 
 msgid "Actions"
-msgstr "操作"
+msgstr "Actions"
 
 msgid "CSRF token validation failed"
-msgstr "CSRF 令牌验证失败"
+msgstr "CSRF token validation failed"
 
 msgid "Invalid filename"
-msgstr "无效的文件名"
+msgstr "Invalid filename"
 
 msgid "File type not allowed"
-msgstr "不允许的文件类型"
+msgstr "File type not allowed"
 
 msgid "File too large"
-msgstr "文件太大"
+msgstr "File too large"
 
 msgid "Failed to save file"
-msgstr "保存文件失败"
+msgstr "Failed to save file"
 
 msgid "Failed to read file"
-msgstr "读取文件失败"
+msgstr "Failed to read file"
 
 msgid "Not an IPK file"
-msgstr "不是 IPK 文件"
+msgstr "Not an IPK file"
 
 msgid "Failed to install IPK"
-msgstr "安装 IPK 失败"
+msgstr "Failed to install IPK" 
