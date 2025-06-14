@@ -119,11 +119,11 @@ function index()
      entry({"admin", "system", "filetransfer", "submit"}, call("action_submit")).leaf = true
 
      -- 文件操作相关接口
-     entry({"admin", "system", "filetransfer", "upload"}, call("action_upload")).leaf = true
-     entry({"admin", "system", "filetransfer", "download"}, call("action_download")).leaf = true
-     entry({"admin", "system", "filetransfer", "list"}, call("action_list")).leaf = true
-     entry({"admin", "system", "filetransfer", "delete"}, call("action_delete")).leaf = true
-     entry({"admin", "system", "filetransfer", "install_ipk"}, call("action_install_ipk")).leaf = true
+    -- entry({"admin", "system", "filetransfer", "upload"}, call("action_upload")).leaf = true
+    -- entry({"admin", "system", "filetransfer", "download"}, call("action_download")).leaf = true
+    -- entry({"admin", "system", "filetransfer", "list"}, call("action_list")).leaf = true
+    -- entry({"admin", "system", "filetransfer", "delete"}, call("action_delete")).leaf = true
+    -- entry({"admin", "system", "filetransfer", "install_ipk"}, call("action_install_ipk")).leaf = true
 
 end
 

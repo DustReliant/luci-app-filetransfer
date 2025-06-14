@@ -39,7 +39,19 @@ local function sanitize_filename(name)
     return name:gsub("[^%w%.%-_]", ""):gsub("%.%.+", ".")
 end
 
--- 原生CSRF集成 --------------------------------------------------
+-- 检查文件类型是否允许
+local function is_allowed_type(filename)
+    local ext = filename:match("%.(%w+)$")
+    if not ext then return false end
+    for _, allowed in ipairs(CONFIG.ALLOWED_TYPES) do
+        if ext:lower() == allowed then
+            return true
+        end
+    end
+    return false
+end
+
+-- 文件上传表单
 local ful = SimpleForm("upload", translate("文件上传"))
 ful:section(SimpleSection, "", translate("上传文件到安全目录"))
 ful.reset = false
@@ -55,8 +67,7 @@ http.setfilehandler(function(meta, chunk, eof)
     local filepath = CONFIG.UPLOAD_DIR.."/"..filename
     
     -- 类型验证
-    local ext = filename:match("%.(%w+)$")
-    if not ext or not table.contains(CONFIG.ALLOWED_TYPES, ext:lower()) then
+    if not is_allowed_type(filename) then
         log_event("UPLOAD", filename, "TYPE_BLOCKED")
         http.status(415, "不支持的文件类型")
         return
@@ -90,7 +101,7 @@ http.setfilehandler(function(meta, chunk, eof)
     end
 end)
 
--- 安全下载处理 --------------------------------------------------
+-- 文件下载表单
 local fdl = SimpleForm("download", translate("文件下载"))
 fdl:section(SimpleSection, "", translate("从安全目录下载文件"))
 fdl.reset = false
@@ -123,7 +134,7 @@ function fdl.handle(self, state, data)
     end
 end
 
--- 文件管理模块 --------------------------------------------------
+-- 文件管理模块
 local file_list = {}
 for f in fs.glob(CONFIG.UPLOAD_DIR.."/*") do
     local attr = fs.stat(f)
@@ -170,7 +181,7 @@ btn_install.write = function(self, section)
     end
 end
 
--- 日志查看模块 --------------------------------------------------
+-- 日志查看模块
 local log_form = SimpleForm("log", translate("操作日志"))
 local log_view = log_form:section(SimpleSection)
 local log_content = log_view:option(TextValue, "_log")
