@@ -1,0 +1,19 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+
+start_service() {
+    # 确保上传目录存在并有正确的权限
+    mkdir -p /tmp/upload
+    chmod 755 /tmp/upload
+    
+    # 创建日志文件
+    touch /tmp/filetransfer.log
+    chmod 644 /tmp/filetransfer.log
+}
+
+stop_service() {
+    # 清理临时文件
+    rm -f /tmp/filetransfer.log
+} 

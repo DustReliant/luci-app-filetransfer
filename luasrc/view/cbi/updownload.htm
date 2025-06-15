@@ -1,49 +1,157 @@
-
 <%+header%>
 
 <h2><%:文件传输%></h2>
 
-<div class="cbi-section">
-    <h3><%:文件上传%></h3>
-    <div class="cbi-section-node">
-        <form id="upload-form" method="post" enctype="multipart/form-data" action="<%=luci.dispatcher.build_url("admin/system/filetransfer/upload")%>">
-            <input type="hidden" name="csrf_token" value="<%=luci.csrf and luci.csrf.get_token() or ""%>" />
-            <div class="cbi-value">
-                <label class="cbi-value-title"><%:选择文件%></label>
-                <div class="cbi-value-field">
-                    <input type="file" name="file" id="file-input" />
-                    <div class="cbi-value-description">
-                        <%:支持的文件类型：ipk, tar, gz, zip, txt, conf, json%>
-                        <br />
-                        <%:最大文件大小：50MB%>
-                    </div>
-                </div>
-            </div>
-            <div class="cbi-value cbi-value-last">
-                <div class="cbi-value-field">
-                    <input type="submit" class="cbi-button cbi-button-apply" value="<%:上传%>" />
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+<style>
+.file-transfer-container {
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 
-<div class="cbi-section">
-    <h3><%:文件列表%></h3>
-    <div class="cbi-section-node">
-        <div id="file-list">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th><%:文件名%></th>
-                        <th><%:大小%></th>
-                        <th><%:修改时间%></th>
-                        <th><%:操作%></th>
-                    </tr>
-                </thead>
-                <tbody id="file-list-body">
-                </tbody>
-            </table>
+.upload-area {
+    border: 2px dashed #2196F3;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    background: #f5f9ff;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    border-color: #1976D2;
+    background: #e3f2fd;
+}
+
+.file-list {
+    margin-top: 20px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.table th {
+    background: #f5f5f5;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    margin-right: 5px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #2196F3;
+    color: white;
+}
+
+.btn-danger {
+    background: #f44336;
+    color: white;
+}
+
+.btn-success {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
+
+.operation-log {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.log-entry {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9em;
+}
+
+.log-time {
+    color: #666;
+    font-size: 0.8em;
+}
+
+.log-success { color: #4CAF50; }
+.log-error { color: #f44336; }
+.log-info { color: #2196F3; }
+</style>
+
+<div class="file-transfer-container">
+    <div class="cbi-section">
+        <h3><%:文件上传%></h3>
+        <div class="cbi-section-node">
+            <div class="upload-area" id="drop-zone">
+                <form id="upload-form" method="post" enctype="multipart/form-data" action="<%=luci.dispatcher.build_url("admin/system/filetransfer/upload")%>">
+                    <input type="hidden" name="csrf_token" value="<%=luci.csrf and luci.csrf.get_token() or ""%>" />
+                    <div class="cbi-value">
+                        <label class="cbi-value-title"><%:选择文件%></label>
+                        <div class="cbi-value-field">
+                            <input type="file" name="file" id="file-input" multiple />
+                            <div class="cbi-value-description">
+                                <%:支持的文件类型：ipk, tar, gz, zip, txt, conf, json%>
+                                <br />
+                                <%:最大文件大小：50MB%>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="cbi-value cbi-value-last">
+                        <div class="cbi-value-field">
+                            <input type="submit" class="btn btn-primary" value="<%:上传%>" />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="cbi-section">
+        <h3><%:文件列表%></h3>
+        <div class="cbi-section-node">
+            <div id="file-list" class="file-list">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th><%:文件名%></th>
+                            <th><%:大小%></th>
+                            <th><%:修改时间%></th>
+                            <th><%:操作%></th>
+                        </tr>
+                    </thead>
+                    <tbody id="file-list-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="cbi-section">
+        <h3><%:操作日志%></h3>
+        <div class="operation-log" id="operation-log">
+            <!-- 日志内容将通过JavaScript动态添加 -->
         </div>
     </div>
 </div>
@@ -52,6 +160,21 @@
     // 获取 CSRF Token
     function getCsrfToken() {
         return document.querySelector('input[name="csrf_token"]').value;
+    }
+    
+    // 添加日志功能
+    function addLogEntry(message, type = 'info') {
+        const logContainer = document.getElementById('operation-log');
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry log-${type}`;
+        
+        const time = new Date().toLocaleTimeString();
+        logEntry.innerHTML = `
+            <span class="log-time">[${time}]</span>
+            <span class="log-message">${message}</span>
+        `;
+        
+        logContainer.insertBefore(logEntry, logContainer.firstChild);
     }
     
     // 刷新文件列表
@@ -156,6 +279,7 @@
                 tr.appendChild(tdActions);
                 tbody.appendChild(tr);
             });
+            addLogEntry('刷新文件列表', 'info');
         });
     }
     
@@ -184,13 +308,51 @@
                 }
             }, function(xhr, json) {
                 if (json && json.status === 'success') {
-                    alert('<%:文件上传成功%>');
+                    addLogEntry('文件上传成功', 'success');
                     refreshFileList();
                 } else {
-                    alert('<%:文件上传失败%>');
+                    addLogEntry('文件上传失败', 'error');
                 }
             });
         });
+
+        // 添加拖放上传功能
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('highlight');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('highlight');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            const fileInput = document.getElementById('file-input');
+            fileInput.files = files;
+            addLogEntry(`拖放上传 ${files.length} 个文件`, 'info');
+        }
     });
 </script>
 

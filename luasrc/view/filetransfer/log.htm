@@ -1,0 +1,219 @@
+<%#
+ Copyright 2024 DustReliant
+ Licensed to the public under the MIT License.
+-%>
+
+<%+header%>
+
+<h2 name="content"><%:操作日志%></h2>
+
+<div class="cbi-section">
+    <div class="cbi-section-descr"><%:查看文件传输系统的操作日志%></div>
+    
+    <!-- 日志控制面板 -->
+    <div class="log-controls">
+        <div class="log-filters">
+            <select id="log-level">
+                <option value="all"><%:所有级别%></option>
+                <option value="info"><%:信息%></option>
+                <option value="warning"><%:警告%></option>
+                <option value="error"><%:错误%></option>
+            </select>
+            <input type="text" id="log-search" placeholder="<%:搜索日志...%>">
+            <button onclick="clearLogs()"><%:清除日志%></button>
+            <button onclick="exportLogs()"><%:导出日志%></button>
+        </div>
+    </div>
+
+    <!-- 日志显示区域 -->
+    <div class="log-container">
+        <div class="log-content" id="log-content">
+            <!-- 日志内容将通过 JavaScript 动态加载 -->
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+// 日志自动刷新间隔（毫秒）
+var REFRESH_INTERVAL = 5000;
+var autoRefresh = true;
+
+// 初始化页面
+document.addEventListener('DOMContentLoaded', function() {
+    loadLogs();
+    if (autoRefresh) {
+        setInterval(loadLogs, REFRESH_INTERVAL);
+    }
+});
+
+// 加载日志
+function loadLogs() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '<%=luci.dispatcher.build_url("admin/system/filetransfer/get_logs")%>', true);
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            var logs = JSON.parse(xhr.responseText);
+            updateLogDisplay(logs);
+        }
+    };
+    
+    xhr.send();
+}
+
+// 更新日志显示
+function updateLogDisplay(logs) {
+    var container = document.getElementById('log-content');
+    var level = document.getElementById('log-level').value;
+    var search = document.getElementById('log-search').value.toLowerCase();
+    
+    // 过滤日志
+    var filteredLogs = logs.filter(function(log) {
+        var matchesLevel = level === 'all' || log.level === level;
+        var matchesSearch = !search || log.message.toLowerCase().includes(search);
+        return matchesLevel && matchesSearch;
+    });
+    
+    // 更新显示
+    container.innerHTML = filteredLogs.map(function(log) {
+        return `
+            <div class="log-entry log-${log.level}">
+                <span class="log-time">${log.time}</span>
+                <span class="log-level">${log.level}</span>
+                <span class="log-message">${log.message}</span>
+            </div>
+        `;
+    }).join('');
+    
+    // 自动滚动到底部
+    container.scrollTop = container.scrollHeight;
+}
+
+// 清除日志
+function clearLogs() {
+    if (confirm('<%:确定要清除所有日志吗？%>')) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '<%=luci.dispatcher.build_url("admin/system/filetransfer/clear_logs")%>', true);
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                loadLogs();
+            } else {
+                alert('清除日志失败：' + xhr.responseText);
+            }
+        };
+        
+        xhr.send();
+    }
+}
+
+// 导出日志
+function exportLogs() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '<%=luci.dispatcher.build_url("admin/system/filetransfer/export_logs")%>', true);
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            var blob = new Blob([xhr.responseText], { type: 'text/plain' });
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'filetransfer_logs.txt';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            alert('导出日志失败：' + xhr.responseText);
+        }
+    };
+    
+    xhr.send();
+}
+
+// 监听筛选条件变化
+document.getElementById('log-level').addEventListener('change', loadLogs);
+document.getElementById('log-search').addEventListener('input', loadLogs);
+</script>
+
+<style>
+.log-controls {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.log-filters {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.log-filters select,
+.log-filters input {
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.log-container {
+    height: 500px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.log-content {
+    padding: 10px;
+}
+
+.log-entry {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    font-family: monospace;
+}
+
+.log-time {
+    color: #757575;
+    margin-right: 10px;
+}
+
+.log-level {
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-right: 10px;
+    font-size: 12px;
+}
+
+.log-info .log-level {
+    background-color: #E3F2FD;
+    color: #1976D2;
+}
+
+.log-warning .log-level {
+    background-color: #FFF3E0;
+    color: #F57C00;
+}
+
+.log-error .log-level {
+    background-color: #FFEBEE;
+    color: #D32F2F;
+}
+
+button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: #2196F3;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #1976D2;
+}
+</style>
+
+<%+footer%> 

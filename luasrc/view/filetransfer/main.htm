@@ -1,0 +1,382 @@
+<%#
+ Copyright 2024 DustReliant
+ Licensed to the public under the MIT License.
+-%>
+
+<%+header%>
+
+<h2 name="content"><%:文件传输%></h2>
+
+<div class="cbi-section">
+    <div class="cbi-section-descr"><%:通过Web界面上传和管理文件%></div>
+    
+    <!-- 文件上传区域 -->
+    <div class="upload-area" id="upload-area">
+        <div class="upload-box">
+            <i class="icon-upload"></i>
+            <p><%:拖拽文件到此处或点击上传%></p>
+            <p class="upload-hint"><%:支持的文件类型：ipk, tar, gz, zip, txt, conf, json%></p>
+            <p class="upload-hint"><%:最大文件大小：50MB%></p>
+            <input type="file" id="file-input" multiple style="display: none;">
+        </div>
+        <div class="upload-progress" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress" style="width: 0%"></div>
+            </div>
+            <div class="progress-text">0%</div>
+        </div>
+    </div>
+
+    <!-- 文件列表 -->
+    <div class="file-list" id="file-list">
+        <div class="file-list-header">
+            <h3><%:文件列表%></h3>
+            <div class="file-list-actions">
+                <input type="text" id="file-search" placeholder="<%:搜索文件...%>">
+                <button class="btn btn-primary" onclick="refreshFileList()">
+                    <i class="icon-refresh"></i> <%:刷新%>
+                </button>
+            </div>
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th><%:文件名%></th>
+                    <th><%:大小%></th>
+                    <th><%:修改时间%></th>
+                    <th><%:操作%></th>
+                </tr>
+            </thead>
+            <tbody id="file-list-body">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="text/javascript">
+// 文件上传处理
+document.getElementById('file-input').addEventListener('change', function(e) {
+    var files = e.target.files;
+    for (var i = 0; i < files.length; i++) {
+        uploadFile(files[i]);
+    }
+});
+
+// 拖拽上传
+var uploadArea = document.getElementById('upload-area');
+uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    for (var i = 0; i < files.length; i++) {
+        uploadFile(files[i]);
+    }
+});
+
+// 上传文件函数
+function uploadFile(file) {
+    if (!confirm('<%:确定要上传文件 "%s" 吗？%>'.replace('%s', file.name))) {
+        return;
+    }
+
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('filename', file.name);
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '<%=luci.dispatcher.build_url("admin/system/filetransfer/upload")%>', true);
+    
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            var percent = Math.round((e.loaded / e.total) * 100);
+            updateProgress(percent);
+        }
+    };
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            showMessage('<%:文件上传成功%>', 'success');
+            refreshFileList();
+        } else {
+            showMessage('<%:文件上传失败：%>' + xhr.responseText, 'error');
+        }
+    };
+    
+    xhr.send(formData);
+}
+
+// 更新进度条
+function updateProgress(percent) {
+    var progressBar = document.querySelector('.progress');
+    var progressText = document.querySelector('.progress-text');
+    progressBar.style.width = percent + '%';
+    progressText.textContent = percent + '%';
+}
+
+// 刷新文件列表
+function refreshFileList() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '<%=luci.dispatcher.build_url("admin/system/filetransfer/list")%>', true);
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            var files = JSON.parse(xhr.responseText);
+            updateFileList(files);
+        }
+    };
+    
+    xhr.send();
+}
+
+// 更新文件列表显示
+function updateFileList(files) {
+    var tbody = document.getElementById('file-list-body');
+    var searchText = document.getElementById('file-search').value.toLowerCase();
+    tbody.innerHTML = '';
+    
+    files.forEach(function(file) {
+        if (file.name.toLowerCase().includes(searchText)) {
+            var tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${file.name}</td>
+                <td>${formatFileSize(file.size)}</td>
+                <td>${file.date}</td>
+                <td>
+                    <button class="btn btn-primary" onclick="downloadFile('${file.name}')">
+                        <i class="icon-download"></i> <%:下载%>
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteFile('${file.name}')">
+                        <i class="icon-trash"></i> <%:删除%>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+    });
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    var k = 1024;
+    var sizes = ['B', 'KB', 'MB', 'GB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 下载文件
+function downloadFile(filename) {
+    window.location.href = '<%=luci.dispatcher.build_url("admin/system/filetransfer/download")%>?filename=' + encodeURIComponent(filename);
+}
+
+// 删除文件
+function deleteFile(filename) {
+    if (confirm('<%:确定要删除文件 "%s" 吗？%>'.replace('%s', filename))) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '<%=luci.dispatcher.build_url("admin/system/filetransfer/delete")%>', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                showMessage('<%:文件删除成功%>', 'success');
+                refreshFileList();
+            } else {
+                showMessage('<%:文件删除失败：%>' + xhr.responseText, 'error');
+            }
+        };
+        
+        xhr.send('filename=' + encodeURIComponent(filename));
+    }
+}
+
+// 显示消息
+function showMessage(message, type) {
+    var messageDiv = document.createElement('div');
+    messageDiv.className = 'message message-' + type;
+    messageDiv.textContent = message;
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(function() {
+        messageDiv.remove();
+    }, 3000);
+}
+
+// 监听搜索框输入
+document.getElementById('file-search').addEventListener('input', function() {
+    refreshFileList();
+});
+
+// 页面加载完成后刷新文件列表
+document.addEventListener('DOMContentLoaded', function() {
+    refreshFileList();
+});
+</script>
+
+<style>
+.upload-area {
+    border: 2px dashed #ccc;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-area.dragover {
+    border-color: #2196F3;
+    background-color: #E3F2FD;
+}
+
+.upload-box {
+    padding: 20px;
+}
+
+.upload-box i {
+    font-size: 48px;
+    color: #757575;
+}
+
+.upload-hint {
+    color: #757575;
+    font-size: 12px;
+    margin: 5px 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    margin: 10px 0;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background-color: #2196F3;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.file-list {
+    margin-top: 20px;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.file-list-header {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.file-list-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+    color: #212121;
+}
+
+.btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #2196F3;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #1976D2;
+}
+
+.btn-danger {
+    background-color: #F44336;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #D32F2F;
+}
+
+.message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    border-radius: 4px;
+    color: white;
+    animation: slideIn 0.3s ease;
+    z-index: 1000;
+}
+
+.message-success {
+    background-color: #4CAF50;
+}
+
+.message-error {
+    background-color: #F44336;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+#file-search {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 200px;
+}
+
+#file-search:focus {
+    outline: none;
+    border-color: #2196F3;
+}
+</style>
+
+<%+footer%> 

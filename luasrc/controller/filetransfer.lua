@@ -1,7 +1,5 @@
 module("luci.controller.filetransfer", package.seeall)
 
-
-
 -- 在控制器或页面的头部加载翻译
 local translate = require "luci.i18n".translate
 local sys = require "luci.sys"
@@ -29,12 +27,11 @@ local ALLOWED_EXTENSIONS = {
 
 -- 记录日志到文件的函数
 function log_to_file(message)
-    local file = io.open(log_file, "a")  -- 打开文件，追加模式
+    local log_file = "/tmp/filetransfer.log"
+    local file = io.open(log_file, "a")
     if file then
         file:write(os.date("%Y-%m-%d %H:%M:%S") .. " - " .. message .. "\n")
         file:close()
-    else
-        print("Error opening log file")
     end
 end
 
@@ -76,9 +73,7 @@ end
 
 -- 安全地获取文件名
 local function sanitize_filename(filename)
-    -- 移除路径信息
     filename = filename:match("([^/\\]+)$")
-    -- 移除特殊字符
     filename = filename:gsub("[^%w%.%-_]", "")
     return filename
 end
@@ -88,43 +83,49 @@ local function ensure_upload_dir()
     if not fs.stat(UPLOAD_DIR) then
         fs.mkdir(UPLOAD_DIR)
     end
-    -- 设置目录权限为 755
     fs.chmod(UPLOAD_DIR, 755)
 end
 
 -- 设置 CSRF 令牌
 function index()
-     -- 主入口页面
-     --entry({"admin", "system", "filetransfer"}, firstchild(), translate("FileTransfer"), 89).dependent = false
-
-     -- 文件传输页面
-     --entry({"admin", "system", "filetransfer", "updownload"}, cbi("updownload"), translate("File Transfer"), 1).leaf = true
- 
-     -- 日志页面
-     --entry({"admin", "system", "filetransfer", "log"}, cbi("log"), translate("Server Logs"), 2).leaf = true
+    -- 主入口页面
+    entry({"admin", "system", "filetransfer"}, firstchild(), _("文件传输"), 89).dependent = false
     
-     entry({"admin", "system", "filetransfer"}, firstchild(), _("文件传输"), 89).dependent = false
-     entry({"admin", "system", "filetransfer", "updownload"}, cbi("updownload"), _("文件传输"), 1)
-     entry({"admin", "system", "filetransfer", "log"}, template("log"), _("操作日志"), 2)
+    -- 文件传输主页面
+    entry({"admin", "system", "filetransfer", "main"}, template("filetransfer/main"), _("文件传输"), 1)
+    
+    -- 文件管理页面
+    entry({"admin", "system", "filetransfer", "manage"}, template("filetransfer/manage"), _("文件管理"), 2)
+    
+    -- 操作日志页面
+    entry({"admin", "system", "filetransfer", "log"}, template("filetransfer/log"), _("操作日志"), 3)
+    
+    -- 设置页面
+    entry({"admin", "system", "filetransfer", "settings"}, cbi("filetransfer/settings"), _("设置"), 4)
 
-
-
-     -- 日志页面相关接口
-     entry({"admin", "system", "filetransfer", "startlog"}, call("action_start")).leaf = true
-     entry({"admin", "system", "filetransfer", "refresh_log"}, call("action_refresh_log"))
-     entry({"admin", "system", "filetransfer", "del_log"}, call("action_del_log"))
-     entry({"admin", "system", "filetransfer", "del_start_log"}, call("action_del_start_log"))
-     entry({"admin", "system", "filetransfer", "log_level"}, call("action_log_level"))
-     entry({"admin", "system", "filetransfer", "switch_log"}, call("action_switch_log"))
-     entry({"admin", "system", "filetransfer", "submit"}, call("action_submit")).leaf = true
-
-     -- 文件操作相关接口
-    -- entry({"admin", "system", "filetransfer", "upload"}, call("action_upload")).leaf = true
-    -- entry({"admin", "system", "filetransfer", "download"}, call("action_download")).leaf = true
-    -- entry({"admin", "system", "filetransfer", "list"}, call("action_list")).leaf = true
-    -- entry({"admin", "system", "filetransfer", "delete"}, call("action_delete")).leaf = true
-    -- entry({"admin", "system", "filetransfer", "install_ipk"}, call("action_install_ipk")).leaf = true
-
+    -- API 接口
+    -- 文件上传相关
+    entry({"admin", "system", "filetransfer", "upload"}, call("action_upload")).leaf = true
+    entry({"admin", "system", "filetransfer", "upload_progress"}, call("action_upload_progress")).leaf = true
+    
+    -- 文件下载相关
+    entry({"admin", "system", "filetransfer", "download"}, call("action_download")).leaf = true
+    entry({"admin", "system", "filetransfer", "download_progress"}, call("action_download_progress")).leaf = true
+    
+    -- 文件管理相关
+    entry({"admin", "system", "filetransfer", "list"}, call("action_list")).leaf = true
+    entry({"admin", "system", "filetransfer", "delete"}, call("action_delete")).leaf = true
+    entry({"admin", "system", "filetransfer", "preview"}, call("action_preview")).leaf = true
+    entry({"admin", "system", "filetransfer", "install_ipk"}, call("action_install_ipk")).leaf = true
+    
+    -- 日志相关
+    entry({"admin", "system", "filetransfer", "get_logs"}, call("action_get_logs")).leaf = true
+    entry({"admin", "system", "filetransfer", "clear_logs"}, call("action_clear_logs")).leaf = true
+    entry({"admin", "system", "filetransfer", "export_logs"}, call("action_export_logs")).leaf = true
+    
+    -- 设置相关
+    entry({"admin", "system", "filetransfer", "save_settings"}, call("action_save_settings")).leaf = true
+    entry({"admin", "system", "filetransfer", "get_settings"}, call("action_get_settings")).leaf = true
 end
 
 function action_start()
@@ -280,13 +281,8 @@ end
 
 -- 文件上传处理函数
 function action_upload()
-    -- 检查 CSRF Token
-    if not check_csrf() then
-        http.status(403, "CSRF token validation failed")
-        return
-    end
+    ensure_upload_dir()
     
-    -- 获取上传的文件
     local file = http.formvalue("file")
     local filename = http.formvalue("filename")
     
@@ -295,26 +291,22 @@ function action_upload()
         return
     end
     
-    -- 安全处理文件名
     filename = sanitize_filename(filename)
     if not filename then
         http.status(400, "Invalid filename")
         return
     end
     
-    -- 检查文件类型
     if not check_file_type(filename) then
         http.status(400, "File type not allowed")
         return
     end
     
-    -- 检查文件大小
     if not check_file_size(file:len()) then
         http.status(413, "File too large")
         return
     end
     
-    -- 保存文件
     local f = io.open(UPLOAD_DIR .. filename, "w")
     if f then
         f:write(file)
@@ -328,19 +320,12 @@ end
 
 -- 文件下载处理函数
 function action_download()
-    -- 检查 CSRF Token
-    if not check_csrf() then
-        http.status(403, "CSRF token validation failed")
-        return
-    end
-    
     local filename = http.formvalue("filename")
     if not filename then
         http.status(400, "Bad Request")
         return
     end
     
-    -- 安全处理文件名
     filename = sanitize_filename(filename)
     if not filename then
         http.status(400, "Invalid filename")
@@ -353,11 +338,9 @@ function action_download()
         return
     end
     
-    -- 设置下载头
     http.header("Content-Disposition", "attachment; filename=" .. filename)
     http.header("Content-Type", "application/octet-stream")
     
-    -- 发送文件
     local f = io.open(path, "r")
     if f then
         http.write(f:read("*all"))
@@ -370,12 +353,6 @@ end
 
 -- 文件列表获取函数
 function action_list()
-    -- 检查 CSRF Token
-    if not check_csrf() then
-        http.status(403, "CSRF token validation failed")
-        return
-    end
-    
     local files = {}
     local dir = io.popen("ls -l " .. UPLOAD_DIR)
     if dir then
@@ -396,19 +373,12 @@ end
 
 -- 文件删除函数
 function action_delete()
-    -- 检查 CSRF Token
-    if not check_csrf() then
-        http.status(403, "CSRF token validation failed")
-        return
-    end
-    
     local filename = http.formvalue("filename")
     if not filename then
         http.status(400, "Bad Request")
         return
     end
     
-    -- 安全处理文件名
     filename = sanitize_filename(filename)
     if not filename then
         http.status(400, "Invalid filename")
@@ -468,5 +438,32 @@ function action_install_ipk()
         http.write_json({status = "success", message = result})
     else
         http.status(500, "Failed to install IPK: " .. result)
+    end
+end
+
+-- 获取日志函数
+function action_get_logs()
+    local logs = {}
+    local log_file = "/tmp/filetransfer.log"
+    local file = io.open(log_file, "r")
+    if file then
+        for line in file:lines() do
+            table.insert(logs, line)
+        end
+        file:close()
+    end
+    http.write_json(logs)
+end
+
+-- 清除日志函数
+function action_clear_logs()
+    local log_file = "/tmp/filetransfer.log"
+    local file = io.open(log_file, "w")
+    if file then
+        file:write("")
+        file:close()
+        http.write_json({status = "success"})
+    else
+        http.status(500, "Failed to clear logs")
     end
 end
