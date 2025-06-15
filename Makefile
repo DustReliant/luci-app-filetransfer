@@ -1,8 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-filetransfer
-PKG_VERSION=1.0
-# 使用 Git 提交数量作为 PKG_RELEASE 的值
+PKG_VERSION:=1.0
 PKG_RELEASE:=$(shell git rev-list --count HEAD 2>/dev/null || echo "1")
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
