@@ -27,10 +27,11 @@ define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) ./luasrc $(PKG_BUILD_DIR)/
 	$(CP) ./root $(PKG_BUILD_DIR)/
+	$(CP) ./po $(PKG_BUILD_DIR)/
 endef
 
 define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) compile
+	$(MAKE) -C $(PKG_BUILD_DIR)/luasrc
 endef
 
 define Package/$(PKG_NAME)/install
