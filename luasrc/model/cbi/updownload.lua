@@ -19,7 +19,7 @@ sys.call("chown www-data:www-data "..CONFIG.UPLOAD_DIR)
 local function log_event(action, file, status)
     local user = luci.dispatcher.context.authuser or "unknown"
     local msg = string.format(
-        "用户:%s 操作:%s 文件:%s 状态:%s",
+        "User:%s Operation:%s File:%s Status:%s",
         user, action, file, status
     )
     
@@ -52,8 +52,8 @@ local function is_allowed_type(filename)
 end
 
 -- 文件上传表单
-local ful = SimpleForm("upload", translate("文件上传"))
-ful:section(SimpleSection, "", translate("上传文件到安全目录"))
+local ful = SimpleForm("upload", translate("File Upload"))
+ful:section(SimpleSection, "", translate("Upload files to secure directory"))
 ful.reset = false
 ful.submit = false
 
@@ -69,14 +69,14 @@ http.setfilehandler(function(meta, chunk, eof)
     -- 类型验证
     if not is_allowed_type(filename) then
         log_event("UPLOAD", filename, "TYPE_BLOCKED")
-        http.status(415, "不支持的文件类型")
+        http.status(415, "Unsupported file type")
         return
     end
 
     -- 大小验证
     if meta and meta.size > CONFIG.MAX_SIZE then
         log_event("UPLOAD", filename, "SIZE_EXCEED")
-        http.status(413, "文件过大")
+        http.status(413, "File too large")
         return
     end
 
@@ -102,13 +102,13 @@ http.setfilehandler(function(meta, chunk, eof)
 end)
 
 -- 文件下载表单
-local fdl = SimpleForm("download", translate("文件下载"))
-fdl:section(SimpleSection, "", translate("从安全目录下载文件"))
+local fdl = SimpleForm("download", translate("File Download"))
+fdl:section(SimpleSection, "", translate("Download files from secure directory"))
 fdl.reset = false
 fdl.submit = false
 
 -- 下载路径输入
-local dl = fdl:field(Value, "dlfile", translate("文件路径"))
+local dl = fdl:field(Value, "dlfile", translate("File Path"))
 dl.template = "cbi/other_download"
 
 function fdl.handle(self, state, data)
@@ -118,7 +118,7 @@ function fdl.handle(self, state, data)
         
         if not fs.stat(safe_path) then
             log_event("DOWNLOAD", path, "NOT_FOUND")
-            return nil, "文件不存在"
+            return nil, "File not found"
         end
 
         http.header('Content-Disposition', 'attachment; filename="%s"'%fs.basename(safe_path))
@@ -147,15 +147,15 @@ for f in fs.glob(CONFIG.UPLOAD_DIR.."/*") do
     end
 end
 
-local flist = SimpleForm("filelist", translate("文件管理"))
+local flist = SimpleForm("filelist", translate("File Management"))
 local fl = flist:section(Table, file_list)
 
-fl:option(DummyValue, "name", translate("文件名"))
-fl:option(DummyValue, "size", translate("大小"))
-fl:option(DummyValue, "mtime", translate("修改时间"))
+fl:option(DummyValue, "name", translate("File Name"))
+fl:option(DummyValue, "size", translate("Size"))
+fl:option(DummyValue, "mtime", translate("Modify Time"))
 
 -- 安全安装按钮
-local btn_install = fl:option(Button, "install", translate("安装"))
+local btn_install = fl:option(Button, "install", translate("Install"))
 btn_install.render = function(self, section, scope)
     if file_list[section].name:match("%.ipk$") then
         Button.render(self, section, scope)
@@ -182,7 +182,7 @@ btn_install.write = function(self, section)
 end
 
 -- 日志查看模块
-local log_form = SimpleForm("log", translate("操作日志"))
+local log_form = SimpleForm("log", translate("Operation Logs"))
 local log_view = log_form:section(SimpleSection)
 local log_content = log_view:option(TextValue, "_log")
 log_content.rows = 20

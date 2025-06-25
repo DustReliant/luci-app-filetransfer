@@ -1,108 +1,174 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+# Application name
 msgid "FileTransfer"
 msgstr "File Transfer"
 
 msgid "filetransfer"
+msgstr "filetransfer"
+
+msgid "File Transfer"
 msgstr "File Transfer"
 
+# Main navigation
+msgid "File Management"
+msgstr "File Management"
+
+msgid "Operation Logs"
+msgstr "Operation Logs"
+
+msgid "Settings"
+msgstr "Settings"
+
+# File operations
 msgid "Upload"
 msgstr "Upload"
-
-msgid "Upload file to '/tmp/upload/'"
-msgstr "Upload file to '/tmp/upload/'"
 
 msgid "Download"
 msgstr "Download"
 
-msgid "Download file"
-msgstr "Download file"
-
-msgid "Couldn't open file: "
-msgstr "Couldn't open file: "
-
-msgid "Create upload file error."
-msgstr "Failed to create upload file."
-
-msgid "File saved to"
-msgstr "File saved to"
-
-msgid "No specify upload file."
-msgstr "No file specified for upload."
-
-msgid "Upload file list"
-msgstr "Upload file list"
-
-msgid "File name"
-msgstr "File name"
-
-msgid "Modify time"
-msgstr "Modify time"
-
-msgid "Mode string"
-msgstr "Permissions"
-
-msgid "Size"
-msgstr "Size"
-
-msgid "Remove"
-msgstr "Remove"
+msgid "Delete"
+msgstr "Delete"
 
 msgid "Install"
 msgstr "Install"
 
-msgid "Upload file:"
-msgstr "Upload file:"
+msgid "Remove"
+msgstr "Remove"
 
-msgid "Download file:"
-msgstr "Download file:"
+msgid "Actions"
+msgstr "Actions"
+
+msgid "Refresh"
+msgstr "Refresh"
+
+# File upload
+msgid "Upload file to '/tmp/upload/'"
+msgstr "Upload file to '/tmp/upload/'"
+
+msgid "Upload files to secure directory"
+msgstr "Upload files to secure directory"
+
+msgid "Drag files here or click to upload"
+msgstr "Drag files here or click to upload"
+
+msgid "Drag and drop upload"
+msgstr "Drag and drop upload"
 
 msgid "Select file"
 msgstr "Select file"
 
+msgid "Upload file:"
+msgstr "Upload file:"
+
+# File download
+msgid "Download file"
+msgstr "Download file"
+
+msgid "Download files from secure directory"
+msgstr "Download files from secure directory"
+
+msgid "Download file:"
+msgstr "Download file:"
+
+# File information
+msgid "File name"
+msgstr "File name"
+
+msgid "File Name"
+msgstr "File Name"
+
+msgid "File Path"
+msgstr "File Path"
+
+msgid "Size"
+msgstr "Size"
+
+msgid "Modify time"
+msgstr "Modify time"
+
+msgid "Modify Time"
+msgstr "Modify Time"
+
+msgid "Mode string"
+msgstr "Mode string"
+
+# File list
+msgid "Upload file list"
+msgstr "Upload file list"
+
+msgid "File List"
+msgstr "File List"
+
+msgid "No files"
+msgstr "No files"
+
+msgid "files"
+msgstr "files"
+
+msgid "Search files..."
+msgstr "Search files..."
+
+msgid "Refresh file list"
+msgstr "Refresh file list"
+
+# File type and size restrictions
 msgid "Supported file types: ipk, tar, gz, zip, txt, conf, json"
 msgstr "Supported file types: ipk, tar, gz, zip, txt, conf, json"
 
 msgid "Maximum file size: 50MB"
 msgstr "Maximum file size: 50MB"
 
-msgid "No files"
-msgstr "No files"
+msgid "Allowed file types for upload, separated by commas"
+msgstr "Allowed file types for upload, separated by commas"
 
-msgid "Are you sure you want to delete this file?"
-msgstr "Are you sure you want to delete this file?"
+msgid "Maximum size of a single file (MB)"
+msgstr "Maximum size of a single file (MB)"
 
-msgid "Delete failed"
-msgstr "Delete failed"
-
-msgid "Are you sure you want to install this IPK file?"
-msgstr "Are you sure you want to install this IPK file?"
-
-msgid "Installation complete"
-msgstr "Installation complete"
-
-msgid "Installation failed"
-msgstr "Installation failed"
+# Success messages
+msgid "File saved to"
+msgstr "File saved to"
 
 msgid "File upload successful"
 msgstr "File upload successful"
 
+msgid "Installation complete"
+msgstr "Installation complete"
+
+msgid "File deleted successfully"
+msgstr "File deleted successfully"
+
+# Error messages
+msgid "Couldn't open file: "
+msgstr "Couldn't open file: "
+
+msgid "Create upload file error."
+msgstr "Create upload file error."
+
+msgid "No specify upload file."
+msgstr "No specify upload file."
+
 msgid "File upload failed"
 msgstr "File upload failed"
 
-msgid "Operation Logs"
-msgstr "Operation Logs"
+msgid "Delete failed"
+msgstr "Delete failed"
 
-msgid "File Transfer"
-msgstr "File Transfer"
+msgid "Installation failed"
+msgstr "Installation failed"
 
-msgid "Actions"
-msgstr "Actions"
+msgid "File deletion failed:"
+msgstr "File deletion failed:"
 
 msgid "CSRF token validation failed"
 msgstr "CSRF token validation failed"
@@ -126,4 +192,135 @@ msgid "Not an IPK file"
 msgstr "Not an IPK file"
 
 msgid "Failed to install IPK"
-msgstr "Failed to install IPK" 
+msgstr "Failed to install IPK"
+
+msgid "File not found"
+msgstr "File not found"
+
+msgid "Unsupported file type"
+msgstr "Unsupported file type"
+
+msgid "Bad Request"
+msgstr "Bad Request"
+
+msgid "Failed to delete file"
+msgstr "Failed to delete file"
+
+msgid "Failed to clear logs"
+msgstr "Failed to clear logs"
+
+msgid "Failed to export logs"
+msgstr "Failed to export logs"
+
+# Confirmation dialogs
+msgid "Are you sure you want to delete this file?"
+msgstr "Are you sure you want to delete this file?"
+
+msgid "Are you sure you want to delete file \"%s\"?"
+msgstr "Are you sure you want to delete file \"%s\"?"
+
+msgid "Are you sure you want to install this IPK file?"
+msgstr "Are you sure you want to install this IPK file?"
+
+msgid "Are you sure you want to clear all logs?"
+msgstr "Are you sure you want to clear all logs?"
+
+# Settings page
+msgid "File Transfer Settings"
+msgstr "File Transfer Settings"
+
+msgid "Configure file transfer system parameters"
+msgstr "Configure file transfer system parameters"
+
+# Basic settings
+msgid "Basic Settings"
+msgstr "Basic Settings"
+
+msgid "Upload Directory"
+msgstr "Upload Directory"
+
+msgid "Default directory for file uploads"
+msgstr "Default directory for file uploads"
+
+msgid "Maximum File Size"
+msgstr "Maximum File Size"
+
+msgid "Allowed File Types"
+msgstr "Allowed File Types"
+
+# Log settings
+msgid "Log Settings"
+msgstr "Log Settings"
+
+msgid "Log Level"
+msgstr "Log Level"
+
+msgid "Set the detail level of log records"
+msgstr "Set the detail level of log records"
+
+msgid "Log Retention"
+msgstr "Log Retention"
+
+msgid "Number of days to retain logs"
+msgstr "Number of days to retain logs"
+
+msgid "Auto Clean"
+msgstr "Auto Clean"
+
+msgid "Automatically clean expired log files"
+msgstr "Automatically clean expired log files"
+
+# Log levels
+msgid "Debug"
+msgstr "Debug"
+
+msgid "Info"
+msgstr "Info"
+
+msgid "Warning"
+msgstr "Warning"
+
+msgid "Error"
+msgstr "Error"
+
+msgid "All Levels"
+msgstr "All Levels"
+
+# Security settings
+msgid "Security Settings"
+msgstr "Security Settings"
+
+msgid "Enable CSRF Protection"
+msgstr "Enable CSRF Protection"
+
+msgid "Enable Cross-Site Request Forgery protection"
+msgstr "Enable Cross-Site Request Forgery protection"
+
+msgid "Enable SSL"
+msgstr "Enable SSL"
+
+msgid "Enable Secure Socket Layer encryption"
+msgstr "Enable Secure Socket Layer encryption"
+
+msgid "Allowed IP Addresses"
+msgstr "Allowed IP Addresses"
+
+msgid "Allowed IP addresses for access, separated by commas"
+msgstr "Allowed IP addresses for access, separated by commas"
+
+# Log operations
+msgid "Search logs..."
+msgstr "Search logs..."
+
+msgid "Clear Logs"
+msgstr "Clear Logs"
+
+msgid "Export Logs"
+msgstr "Export Logs"
+
+msgid "View file transfer system operation logs"
+msgstr "View file transfer system operation logs"
+
+# Descriptions
+msgid "Upload and manage files through Web interface"
+msgstr "Upload and manage files through Web interface" 

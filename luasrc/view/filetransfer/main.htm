@@ -5,378 +5,478 @@
 
 <%+header%>
 
-<h2 name="content"><%:文件传输%></h2>
-
-<div class="cbi-section">
-    <div class="cbi-section-descr"><%:通过Web界面上传和管理文件%></div>
+<div class="cbi-map">
+    <h2 name="content"><%:File Transfer%></h2>
     
-    <!-- 文件上传区域 -->
-    <div class="upload-area" id="upload-area">
-        <div class="upload-box">
-            <i class="icon-upload"></i>
-            <p><%:拖拽文件到此处或点击上传%></p>
-            <p class="upload-hint"><%:支持的文件类型：ipk, tar, gz, zip, txt, conf, json%></p>
-            <p class="upload-hint"><%:最大文件大小：50MB%></p>
-            <input type="file" id="file-input" multiple style="display: none;">
-        </div>
-        <div class="upload-progress" style="display: none;">
-            <div class="progress-bar">
-                <div class="progress" style="width: 0%"></div>
-            </div>
-            <div class="progress-text">0%</div>
-        </div>
-    </div>
-
-    <!-- 文件列表 -->
-    <div class="file-list" id="file-list">
-        <div class="file-list-header">
-            <h3><%:文件列表%></h3>
-            <div class="file-list-actions">
-                <input type="text" id="file-search" placeholder="<%:搜索文件...%>">
-                <button class="btn btn-primary" onclick="refreshFileList()">
-                    <i class="icon-refresh"></i> <%:刷新%>
+    <div class="cbi-section">
+        <div class="cbi-section-descr"><%:Upload and manage files through Web interface%></div>
+        
+        <!-- 文件上传区域 -->
+        <div class="upload-area" id="upload-area">
+            <div class="upload-zone" id="upload-zone">
+                <div class="upload-icon">📁</div>
+                <p><%:Drag files here or click to upload%></p>
+                <p class="upload-hint"><%:Supported file types: ipk, tar, gz, zip, txt, conf, json%></p>
+                <p class="upload-hint"><%:Maximum file size: 50MB%></p>
+                <input type="file" id="fileInput" multiple accept=".ipk,.tar,.gz,.zip,.txt,.conf,.json" style="display: none;" />
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                    <i class="icon-upload"></i> <%:Upload%>
                 </button>
             </div>
+            <div class="progress-container" id="progress-container" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span class="progress-text" id="progress-text">0%</span>
+            </div>
         </div>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th><%:文件名%></th>
-                    <th><%:大小%></th>
-                    <th><%:修改时间%></th>
-                    <th><%:操作%></th>
-                </tr>
-            </thead>
-            <tbody id="file-list-body">
-            </tbody>
-        </table>
+        
+        <!-- 文件列表 -->
+        <div class="file-list-section">
+            <h3><%:File List%></h3>
+            <div class="file-controls">
+                <input type="text" id="file-search" placeholder="<%:Search files...%>">
+                <button class="btn btn-secondary" onclick="refreshFileList()">
+                    <i class="icon-refresh"></i> <%:Refresh%>
+                </button>
+            </div>
+            <div class="file-table-container">
+                <table class="file-table" id="file-table">
+                    <thead>
+                        <tr>
+                            <th><%:File Name%></th>
+                            <th><%:Size%></th>
+                            <th><%:Modify Time%></th>
+                            <th><%:Actions%></th>
+                        </tr>
+                    </thead>
+                    <tbody id="file-table-body">
+                        <!-- 文件列表将通过 JavaScript 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
-<script type="text/javascript">
-// 文件上传处理
-document.getElementById('file-input').addEventListener('change', function(e) {
-    var files = e.target.files;
-    for (var i = 0; i < files.length; i++) {
-        uploadFile(files[i]);
-    }
-});
-
-// 拖拽上传
-var uploadArea = document.getElementById('upload-area');
-uploadArea.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    uploadArea.classList.add('dragover');
-});
-
-uploadArea.addEventListener('dragleave', function(e) {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-});
-
-uploadArea.addEventListener('drop', function(e) {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-    var files = e.dataTransfer.files;
-    for (var i = 0; i < files.length; i++) {
-        uploadFile(files[i]);
-    }
-});
-
-// 上传文件函数
-function uploadFile(file) {
-    if (!confirm('<%:确定要上传文件 "%s" 吗？%>'.replace('%s', file.name))) {
-        return;
-    }
-
-    var formData = new FormData();
-    formData.append('file', file);
-    formData.append('filename', file.name);
-    
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', '<%=luci.dispatcher.build_url("admin/system/filetransfer/upload")%>', true);
-    
-    xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) {
-            var percent = Math.round((e.loaded / e.total) * 100);
-            updateProgress(percent);
-        }
-    };
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            showMessage('<%:文件上传成功%>', 'success');
-            refreshFileList();
-        } else {
-            showMessage('<%:文件上传失败：%>' + xhr.responseText, 'error');
-        }
-    };
-    
-    xhr.send(formData);
-}
-
-// 更新进度条
-function updateProgress(percent) {
-    var progressBar = document.querySelector('.progress');
-    var progressText = document.querySelector('.progress-text');
-    progressBar.style.width = percent + '%';
-    progressText.textContent = percent + '%';
-}
-
-// 刷新文件列表
-function refreshFileList() {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '<%=luci.dispatcher.build_url("admin/system/filetransfer/list")%>', true);
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            var files = JSON.parse(xhr.responseText);
-            updateFileList(files);
-        }
-    };
-    
-    xhr.send();
-}
-
-// 更新文件列表显示
-function updateFileList(files) {
-    var tbody = document.getElementById('file-list-body');
-    var searchText = document.getElementById('file-search').value.toLowerCase();
-    tbody.innerHTML = '';
-    
-    files.forEach(function(file) {
-        if (file.name.toLowerCase().includes(searchText)) {
-            var tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${file.name}</td>
-                <td>${formatFileSize(file.size)}</td>
-                <td>${file.date}</td>
-                <td>
-                    <button class="btn btn-primary" onclick="downloadFile('${file.name}')">
-                        <i class="icon-download"></i> <%:下载%>
-                    </button>
-                    <button class="btn btn-danger" onclick="deleteFile('${file.name}')">
-                        <i class="icon-trash"></i> <%:删除%>
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        }
-    });
-}
-
-// 格式化文件大小
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 B';
-    var k = 1024;
-    var sizes = ['B', 'KB', 'MB', 'GB'];
-    var i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// 下载文件
-function downloadFile(filename) {
-    window.location.href = '<%=luci.dispatcher.build_url("admin/system/filetransfer/download")%>?filename=' + encodeURIComponent(filename);
-}
-
-// 删除文件
-function deleteFile(filename) {
-    if (confirm('<%:确定要删除文件 "%s" 吗？%>'.replace('%s', filename))) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '<%=luci.dispatcher.build_url("admin/system/filetransfer/delete")%>', true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                showMessage('<%:文件删除成功%>', 'success');
-                refreshFileList();
-            } else {
-                showMessage('<%:文件删除失败：%>' + xhr.responseText, 'error');
-            }
-        };
-        
-        xhr.send('filename=' + encodeURIComponent(filename));
-    }
-}
-
-// 显示消息
-function showMessage(message, type) {
-    var messageDiv = document.createElement('div');
-    messageDiv.className = 'message message-' + type;
-    messageDiv.textContent = message;
-    document.body.appendChild(messageDiv);
-    
-    setTimeout(function() {
-        messageDiv.remove();
-    }, 3000);
-}
-
-// 监听搜索框输入
-document.getElementById('file-search').addEventListener('input', function() {
-    refreshFileList();
-});
-
-// 页面加载完成后刷新文件列表
-document.addEventListener('DOMContentLoaded', function() {
-    refreshFileList();
-});
-</script>
-
 <style>
 .upload-area {
+    margin: 20px 0;
+}
+
+.upload-zone {
     border: 2px dashed #ccc;
-    border-radius: 4px;
-    padding: 20px;
+    border-radius: 8px;
+    padding: 40px;
     text-align: center;
-    margin-bottom: 20px;
-    cursor: pointer;
+    background-color: #f9f9f9;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 
-.upload-area.dragover {
-    border-color: #2196F3;
-    background-color: #E3F2FD;
+.upload-zone:hover,
+.upload-zone.dragover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
 }
 
-.upload-box {
-    padding: 20px;
-}
-
-.upload-box i {
+.upload-icon {
     font-size: 48px;
-    color: #757575;
+    margin-bottom: 20px;
+    color: #007bff;
 }
 
 .upload-hint {
-    color: #757575;
-    font-size: 12px;
+    font-size: 14px;
+    color: #666;
     margin: 5px 0;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    margin: 5px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.progress-container {
+    margin-top: 20px;
 }
 
 .progress-bar {
     width: 100%;
     height: 20px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
-    margin: 10px 0;
+    background-color: #e9ecef;
+    border-radius: 10px;
     overflow: hidden;
+    position: relative;
 }
 
-.progress {
+.progress-fill {
     height: 100%;
-    background-color: #2196F3;
-    border-radius: 4px;
+    background-color: #007bff;
     transition: width 0.3s ease;
+    width: 0%;
 }
 
-.file-list {
-    margin-top: 20px;
-    background: #fff;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+.progress-text {
+    display: block;
+    text-align: center;
+    margin-top: 5px;
+    font-size: 14px;
 }
 
-.file-list-header {
-    padding: 15px;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.file-list-section {
+    margin-top: 30px;
 }
 
-.file-list-actions {
+.file-controls {
+    margin-bottom: 15px;
     display: flex;
     gap: 10px;
+    align-items: center;
 }
 
-.table {
+.file-controls input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.file-table-container {
+    overflow-x: auto;
+}
+
+.file-table {
     width: 100%;
     border-collapse: collapse;
+    background-color: white;
 }
 
-.table th,
-.table td {
-    padding: 12px 15px;
+.file-table th,
+.file-table td {
+    padding: 12px;
     text-align: left;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #ddd;
 }
 
-.table th {
-    background-color: #f5f5f5;
+.file-table th {
+    background-color: #f8f9fa;
     font-weight: bold;
-    color: #212121;
+    position: sticky;
+    top: 0;
 }
 
-.btn {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
+.file-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.file-actions {
+    display: flex;
     gap: 5px;
-    transition: background-color 0.3s ease;
 }
 
-.btn-primary {
-    background-color: #2196F3;
-    color: white;
-}
-
-.btn-primary:hover {
-    background-color: #1976D2;
-}
-
-.btn-danger {
-    background-color: #F44336;
-    color: white;
-}
-
-.btn-danger:hover {
-    background-color: #D32F2F;
+.file-actions .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    margin: 0;
 }
 
 .message {
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 4px;
     position: fixed;
     top: 20px;
     right: 20px;
-    padding: 10px 20px;
-    border-radius: 4px;
-    color: white;
-    animation: slideIn 0.3s ease;
     z-index: 1000;
+    min-width: 300px;
 }
 
-.message-success {
-    background-color: #4CAF50;
+.message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
 }
 
-.message-error {
-    background-color: #F44336;
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-#file-search {
-    padding: 6px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    width: 200px;
-}
-
-#file-search:focus {
-    outline: none;
-    border-color: #2196F3;
+.message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('fileInput');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const fileTableBody = document.getElementById('file-table-body');
+    const fileSearch = document.getElementById('file-search');
+
+    // 拖拽上传功能
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        handleFileUpload(files);
+    });
+
+    uploadZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function() {
+        handleFileUpload(this.files);
+    });
+
+    // 文件上传处理
+    function handleFileUpload(files) {
+        if (files.length === 0) return;
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!confirm('<%:Are you sure you want to upload file "%s"?%>'.replace('%s', file.name))) {
+                continue;
+            }
+            uploadFile(file);
+        }
+    }
+
+    function uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressContainer.style.display = 'block';
+                progressFill.style.width = percentComplete + '%';
+                progressText.textContent = percentComplete + '%';
+            }
+        });
+
+        xhr.addEventListener('load', function() {
+            progressContainer.style.display = 'none';
+            if (xhr.status === 200) {
+                showMessage('<%:File upload successful%>', 'success');
+                refreshFileList();
+            } else {
+                showMessage('<%:File upload failed:%> ' + xhr.responseText, 'error');
+            }
+        });
+
+        xhr.addEventListener('error', function() {
+            progressContainer.style.display = 'none';
+            showMessage('<%:File upload failed%>', 'error');
+        });
+
+        xhr.open('POST', '<%=luci.dispatcher.build_url("admin", "filetransfer", "upload")%>');
+        xhr.send(formData);
+    }
+
+    // 刷新文件列表
+    function refreshFileList() {
+        fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "list")%>')
+            .then(response => response.json())
+            .then(data => {
+                updateFileTable(data.files || []);
+            })
+            .catch(error => {
+                console.error('Error fetching file list:', error);
+                showMessage('Failed to fetch file list', 'error');
+            });
+    }
+
+    // 更新文件表格
+    function updateFileTable(files) {
+        fileTableBody.innerHTML = '';
+        
+        if (files.length === 0) {
+            const row = fileTableBody.insertRow();
+            const cell = row.insertCell(0);
+            cell.colSpan = 4;
+            cell.style.textAlign = 'center';
+            cell.textContent = '<%:No files%>';
+            return;
+        }
+
+        files.forEach(function(file) {
+            const row = fileTableBody.insertRow();
+            
+            const nameCell = row.insertCell(0);
+            nameCell.textContent = file.name;
+            
+            const sizeCell = row.insertCell(1);
+            sizeCell.textContent = formatFileSize(file.size);
+            
+            const mtimeCell = row.insertCell(2);
+            mtimeCell.textContent = new Date(file.mtime * 1000).toLocaleString();
+            
+            const actionsCell = row.insertCell(3);
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'file-actions';
+            
+            // 下载按钮
+            const downloadBtn = document.createElement('a');
+            downloadBtn.href = '<%=luci.dispatcher.build_url("admin", "filetransfer", "download")%>/' + encodeURIComponent(file.name);
+            downloadBtn.className = 'btn btn-success';
+            downloadBtn.innerHTML = '<i class="icon-download"></i> <%:Download%>';
+            actionsDiv.appendChild(downloadBtn);
+            
+            // 删除按钮
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-danger';
+            deleteBtn.innerHTML = '<i class="icon-trash"></i> <%:Delete%>';
+            deleteBtn.onclick = function() {
+                deleteFile(file.name);
+            };
+            actionsDiv.appendChild(deleteBtn);
+            
+            // IPK 安装按钮
+            if (file.name.endsWith('.ipk')) {
+                const installBtn = document.createElement('button');
+                installBtn.className = 'btn btn-primary';
+                installBtn.textContent = '<%:Install%>';
+                installBtn.onclick = function() {
+                    installPackage(file.name);
+                };
+                actionsDiv.appendChild(installBtn);
+            }
+            
+            actionsCell.appendChild(actionsDiv);
+        });
+    }
+
+    // 删除文件
+    function deleteFile(filename) {
+        if (confirm('<%:Are you sure you want to delete file "%s"?%>'.replace('%s', filename))) {
+            fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "delete")%>/' + encodeURIComponent(filename), {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    showMessage('<%:File deleted successfully%>', 'success');
+                    refreshFileList();
+                } else {
+                    showMessage('<%:File deletion failed:%> ' + xhr.responseText, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('<%:File deletion failed%>', 'error');
+            });
+        }
+    }
+
+    // 安装包
+    function installPackage(filename) {
+        if (confirm('<%:Are you sure you want to install this IPK file?%>')) {
+            fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "install")%>/' + encodeURIComponent(filename), {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message || '<%:Installation complete%>', 'success');
+                } else {
+                    showMessage('<%:Installation failed%>', 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('<%:Installation failed%>', 'error');
+            });
+        }
+    }
+
+    // 显示消息
+    function showMessage(message, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ' + type;
+        messageDiv.textContent = message;
+        document.body.appendChild(messageDiv);
+
+        setTimeout(function() {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 5000);
+    }
+
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // 搜索功能
+    fileSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = fileTableBody.getElementsByTagName('tr');
+        
+        for (let i = 0; i < rows.length; i++) {
+            const nameCell = rows[i].getElementsByTagName('td')[0];
+            if (nameCell) {
+                const filename = nameCell.textContent.toLowerCase();
+                if (filename.includes(searchTerm)) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+    });
+
+    // 全局函数
+    window.refreshFileList = refreshFileList;
+
+    // 初始加载文件列表
+    refreshFileList();
+});
+</script>
 
 <%+footer%> 

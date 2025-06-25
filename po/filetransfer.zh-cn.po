@@ -1,108 +1,174 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
+# Application name
 msgid "FileTransfer"
 msgstr "文件传输"
 
 msgid "filetransfer"
 msgstr "文件传输"
 
+msgid "File Transfer"
+msgstr "文件传输"
+
+# Main navigation
+msgid "File Management"
+msgstr "文件管理"
+
+msgid "Operation Logs"
+msgstr "操作日志"
+
+msgid "Settings"
+msgstr "设置"
+
+# File operations
 msgid "Upload"
 msgstr "上传"
-
-msgid "Upload file to '/tmp/upload/'"
-msgstr "上传文件到'/tmp/upload/'"
 
 msgid "Download"
 msgstr "下载"
 
-msgid "Download file"
-msgstr "下载文件"
-
-msgid "Couldn't open file: "
-msgstr "无法打开文件："
-
-msgid "Create upload file error."
-msgstr "文件上传失败。"
-
-msgid "File saved to"
-msgstr "文件已保存到"
-
-msgid "No specify upload file."
-msgstr "未指定要上传的文件。"
-
-msgid "Upload file list"
-msgstr "上传文件列表"
-
-msgid "File name"
-msgstr "文件名"
-
-msgid "Modify time"
-msgstr "修改时间"
-
-msgid "Mode string"
-msgstr "权限"
-
-msgid "Size"
-msgstr "大小"
-
-msgid "Remove"
-msgstr "移除"
+msgid "Delete"
+msgstr "删除"
 
 msgid "Install"
 msgstr "安装"
 
-msgid "Upload file:"
-msgstr "上传文件："
+msgid "Remove"
+msgstr "移除"
 
-msgid "Download file:"
-msgstr "下载文件："
+msgid "Actions"
+msgstr "操作"
+
+msgid "Refresh"
+msgstr "刷新"
+
+# File upload
+msgid "Upload file to '/tmp/upload/'"
+msgstr "上传文件到 '/tmp/upload/'"
+
+msgid "Upload files to secure directory"
+msgstr "上传文件到安全目录"
+
+msgid "Drag files here or click to upload"
+msgstr "拖拽文件到此处或点击上传"
+
+msgid "Drag and drop upload"
+msgstr "拖放上传"
 
 msgid "Select file"
 msgstr "选择文件"
 
+msgid "Upload file:"
+msgstr "上传文件："
+
+# File download
+msgid "Download file"
+msgstr "下载文件"
+
+msgid "Download files from secure directory"
+msgstr "从安全目录下载文件"
+
+msgid "Download file:"
+msgstr "下载文件："
+
+# File information
+msgid "File name"
+msgstr "文件名"
+
+msgid "File Name"
+msgstr "文件名"
+
+msgid "File Path"
+msgstr "文件路径"
+
+msgid "Size"
+msgstr "大小"
+
+msgid "Modify time"
+msgstr "修改时间"
+
+msgid "Modify Time"
+msgstr "修改时间"
+
+msgid "Mode string"
+msgstr "权限字符串"
+
+# File list
+msgid "Upload file list"
+msgstr "上传文件列表"
+
+msgid "File List"
+msgstr "文件列表"
+
+msgid "No files"
+msgstr "没有文件"
+
+msgid "files"
+msgstr "个文件"
+
+msgid "Search files..."
+msgstr "搜索文件..."
+
+msgid "Refresh file list"
+msgstr "刷新文件列表"
+
+# File type and size restrictions
 msgid "Supported file types: ipk, tar, gz, zip, txt, conf, json"
 msgstr "支持的文件类型：ipk, tar, gz, zip, txt, conf, json"
 
 msgid "Maximum file size: 50MB"
 msgstr "最大文件大小：50MB"
 
-msgid "No files"
-msgstr "没有文件"
+msgid "Allowed file types for upload, separated by commas"
+msgstr "允许上传的文件类型，用逗号分隔"
 
-msgid "Are you sure you want to delete this file?"
-msgstr "确定要删除此文件吗？"
+msgid "Maximum size of a single file (MB)"
+msgstr "单个文件的最大大小（MB）"
 
-msgid "Delete failed"
-msgstr "删除失败"
-
-msgid "Are you sure you want to install this IPK file?"
-msgstr "确定要安装此 IPK 文件吗？"
-
-msgid "Installation complete"
-msgstr "安装完成"
-
-msgid "Installation failed"
-msgstr "安装失败"
+# Success messages
+msgid "File saved to"
+msgstr "文件保存到"
 
 msgid "File upload successful"
 msgstr "文件上传成功"
 
+msgid "Installation complete"
+msgstr "安装完成"
+
+msgid "File deleted successfully"
+msgstr "文件删除成功"
+
+# Error messages
+msgid "Couldn't open file: "
+msgstr "无法打开文件："
+
+msgid "Create upload file error."
+msgstr "创建上传文件错误。"
+
+msgid "No specify upload file."
+msgstr "没有指定上传文件。"
+
 msgid "File upload failed"
 msgstr "文件上传失败"
 
-msgid "Operation Logs"
-msgstr "操作日志"
+msgid "Delete failed"
+msgstr "删除失败"
 
-msgid "File Transfer"
-msgstr "文件传输"
+msgid "Installation failed"
+msgstr "安装失败"
 
-msgid "Actions"
-msgstr "操作"
+msgid "File deletion failed:"
+msgstr "文件删除失败："
 
 msgid "CSRF token validation failed"
 msgstr "CSRF 令牌验证失败"
@@ -114,7 +180,7 @@ msgid "File type not allowed"
 msgstr "不允许的文件类型"
 
 msgid "File too large"
-msgstr "文件太大"
+msgstr "文件过大"
 
 msgid "Failed to save file"
 msgstr "保存文件失败"
@@ -127,3 +193,134 @@ msgstr "不是 IPK 文件"
 
 msgid "Failed to install IPK"
 msgstr "安装 IPK 失败"
+
+msgid "File not found"
+msgstr "文件不存在"
+
+msgid "Unsupported file type"
+msgstr "不支持的文件类型"
+
+msgid "Bad Request"
+msgstr "错误请求"
+
+msgid "Failed to delete file"
+msgstr "删除文件失败"
+
+msgid "Failed to clear logs"
+msgstr "清除日志失败"
+
+msgid "Failed to export logs"
+msgstr "导出日志失败"
+
+# Confirmation dialogs
+msgid "Are you sure you want to delete this file?"
+msgstr "确定要删除此文件吗？"
+
+msgid "Are you sure you want to delete file \"%s\"?"
+msgstr "确定要删除文件 \"%s\" 吗？"
+
+msgid "Are you sure you want to install this IPK file?"
+msgstr "确定要安装此 IPK 文件吗？"
+
+msgid "Are you sure you want to clear all logs?"
+msgstr "确定要清除所有日志吗？"
+
+# Settings page
+msgid "File Transfer Settings"
+msgstr "文件传输设置"
+
+msgid "Configure file transfer system parameters"
+msgstr "配置文件传输系统的各项参数"
+
+# Basic settings
+msgid "Basic Settings"
+msgstr "基本设置"
+
+msgid "Upload Directory"
+msgstr "上传目录"
+
+msgid "Default directory for file uploads"
+msgstr "文件上传的默认目录"
+
+msgid "Maximum File Size"
+msgstr "最大文件大小"
+
+msgid "Allowed File Types"
+msgstr "允许的文件类型"
+
+# Log settings
+msgid "Log Settings"
+msgstr "日志设置"
+
+msgid "Log Level"
+msgstr "日志级别"
+
+msgid "Set the detail level of log records"
+msgstr "设置日志记录的详细程度"
+
+msgid "Log Retention"
+msgstr "日志保留时间"
+
+msgid "Number of days to retain logs"
+msgstr "日志保留的天数"
+
+msgid "Auto Clean"
+msgstr "自动清理"
+
+msgid "Automatically clean expired log files"
+msgstr "自动清理过期的日志文件"
+
+# Log levels
+msgid "Debug"
+msgstr "调试"
+
+msgid "Info"
+msgstr "信息"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "All Levels"
+msgstr "所有级别"
+
+# Security settings
+msgid "Security Settings"
+msgstr "安全设置"
+
+msgid "Enable CSRF Protection"
+msgstr "启用 CSRF 保护"
+
+msgid "Enable Cross-Site Request Forgery protection"
+msgstr "启用跨站请求伪造保护"
+
+msgid "Enable SSL"
+msgstr "启用 SSL"
+
+msgid "Enable Secure Socket Layer encryption"
+msgstr "启用安全套接字层加密"
+
+msgid "Allowed IP Addresses"
+msgstr "允许的 IP 地址"
+
+msgid "Allowed IP addresses for access, separated by commas"
+msgstr "允许访问的 IP 地址，用逗号分隔"
+
+# Log operations
+msgid "Search logs..."
+msgstr "搜索日志..."
+
+msgid "Clear Logs"
+msgstr "清除日志"
+
+msgid "Export Logs"
+msgstr "导出日志"
+
+msgid "View file transfer system operation logs"
+msgstr "查看文件传输系统的操作日志"
+
+# Descriptions
+msgid "Upload and manage files through Web interface"
+msgstr "通过Web界面上传和管理文件"

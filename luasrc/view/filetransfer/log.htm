@@ -5,215 +5,290 @@
 
 <%+header%>
 
-<h2 name="content"><%:操作日志%></h2>
-
-<div class="cbi-section">
-    <div class="cbi-section-descr"><%:查看文件传输系统的操作日志%></div>
+<div class="cbi-map">
+    <h2 name="content"><%:Operation Logs%></h2>
     
-    <!-- 日志控制面板 -->
-    <div class="log-controls">
-        <div class="log-filters">
+    <div class="cbi-section">
+        <div class="cbi-section-descr"><%:View file transfer system operation logs%></div>
+        
+        <div class="log-controls">
             <select id="log-level">
-                <option value="all"><%:所有级别%></option>
-                <option value="info"><%:信息%></option>
-                <option value="warning"><%:警告%></option>
-                <option value="error"><%:错误%></option>
+                <option value="all"><%:All Levels%></option>
+                <option value="info"><%:Info%></option>
+                <option value="warning"><%:Warning%></option>
+                <option value="error"><%:Error%></option>
             </select>
-            <input type="text" id="log-search" placeholder="<%:搜索日志...%>">
-            <button onclick="clearLogs()"><%:清除日志%></button>
-            <button onclick="exportLogs()"><%:导出日志%></button>
+            <input type="text" id="log-search" placeholder="<%:Search logs...%>">
+            <button onclick="clearLogs()"><%:Clear Logs%></button>
+            <button onclick="exportLogs()"><%:Export Logs%></button>
         </div>
-    </div>
-
-    <!-- 日志显示区域 -->
-    <div class="log-container">
-        <div class="log-content" id="log-content">
-            <!-- 日志内容将通过 JavaScript 动态加载 -->
+        
+        <div class="log-container">
+            <div class="log-content" id="log-content">
+                <!-- 日志内容将在这里显示 -->
+            </div>
         </div>
     </div>
 </div>
 
-<script type="text/javascript">
-// 日志自动刷新间隔（毫秒）
-var REFRESH_INTERVAL = 5000;
-var autoRefresh = true;
+<style>
+.log-controls {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
 
-// 初始化页面
+.log-controls select,
+.log-controls input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.log-controls input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+}
+
+.log-controls button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+}
+
+.log-controls button:hover {
+    background-color: #0056b3;
+}
+
+.log-container {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.log-content {
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    color: #333;
+}
+
+.log-entry {
+    margin-bottom: 5px;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+.log-entry.info {
+    background-color: #d1ecf1;
+    border-left: 3px solid #17a2b8;
+}
+
+.log-entry.warning {
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+
+.log-entry.error {
+    background-color: #f8d7da;
+    border-left: 3px solid #dc3545;
+}
+
+.log-entry.debug {
+    background-color: #e2e3e5;
+    border-left: 3px solid #6c757d;
+}
+
+.log-timestamp {
+    color: #666;
+    font-weight: bold;
+}
+
+.log-level {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-right: 5px;
+}
+
+.log-level.info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.log-level.warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.log-level.error {
+    background-color: #dc3545;
+    color: white;
+}
+
+.log-level.debug {
+    background-color: #6c757d;
+    color: white;
+}
+
+.no-logs {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    margin: 20px 0;
+}
+</style>
+
+<script>
 document.addEventListener('DOMContentLoaded', function() {
-    loadLogs();
-    if (autoRefresh) {
-        setInterval(loadLogs, REFRESH_INTERVAL);
+    const logContent = document.getElementById('log-content');
+    const logLevel = document.getElementById('log-level');
+    const logSearch = document.getElementById('log-search');
+    
+    let allLogs = [];
+    
+    // 加载日志
+    function loadLogs() {
+        fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "logs")%>')
+            .then(response => response.text())
+            .then(data => {
+                allLogs = parseLogs(data);
+                displayLogs();
+            })
+            .catch(error => {
+                console.error('Error loading logs:', error);
+                logContent.innerHTML = '<div class="no-logs">Failed to load logs</div>';
+            });
     }
-});
-
-// 加载日志
-function loadLogs() {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '<%=luci.dispatcher.build_url("admin/system/filetransfer/get_logs")%>', true);
     
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            var logs = JSON.parse(xhr.responseText);
-            updateLogDisplay(logs);
+    // 解析日志
+    function parseLogs(logData) {
+        const lines = logData.split('\n').filter(line => line.trim());
+        return lines.map(line => {
+            const match = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(\w+)\] (.+)$/);
+            if (match) {
+                return {
+                    timestamp: match[1],
+                    level: match[2].toLowerCase(),
+                    message: match[3],
+                    raw: line
+                };
+            }
+            return {
+                timestamp: '',
+                level: 'info',
+                message: line,
+                raw: line
+            };
+        });
+    }
+    
+    // 显示日志
+    function displayLogs() {
+        const selectedLevel = logLevel.value;
+        const searchTerm = logSearch.value.toLowerCase();
+        
+        let filteredLogs = allLogs;
+        
+        // 按级别过滤
+        if (selectedLevel !== 'all') {
+            filteredLogs = filteredLogs.filter(log => log.level === selectedLevel);
         }
-    };
+        
+        // 按搜索词过滤
+        if (searchTerm) {
+            filteredLogs = filteredLogs.filter(log => 
+                log.message.toLowerCase().includes(searchTerm) ||
+                log.timestamp.includes(searchTerm)
+            );
+        }
+        
+        if (filteredLogs.length === 0) {
+            logContent.innerHTML = '<div class="no-logs">No logs found</div>';
+            return;
+        }
+        
+        const logHtml = filteredLogs.map(log => {
+            return `<div class="log-entry ${log.level}">
+                <span class="log-timestamp">${log.timestamp}</span>
+                <span class="log-level ${log.level}">${log.level}</span>
+                <span class="log-message">${escapeHtml(log.message)}</span>
+            </div>`;
+        }).join('');
+        
+        logContent.innerHTML = logHtml;
+        
+        // 自动滚动到底部
+        logContent.scrollTop = logContent.scrollHeight;
+    }
     
-    xhr.send();
-}
-
-// 更新日志显示
-function updateLogDisplay(logs) {
-    var container = document.getElementById('log-content');
-    var level = document.getElementById('log-level').value;
-    var search = document.getElementById('log-search').value.toLowerCase();
+    // HTML 转义
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
     
-    // 过滤日志
-    var filteredLogs = logs.filter(function(log) {
-        var matchesLevel = level === 'all' || log.level === level;
-        var matchesSearch = !search || log.message.toLowerCase().includes(search);
-        return matchesLevel && matchesSearch;
-    });
+    // 事件监听
+    logLevel.addEventListener('change', displayLogs);
+    logSearch.addEventListener('input', displayLogs);
     
-    // 更新显示
-    container.innerHTML = filteredLogs.map(function(log) {
-        return `
-            <div class="log-entry log-${log.level}">
-                <span class="log-time">${log.time}</span>
-                <span class="log-level">${log.level}</span>
-                <span class="log-message">${log.message}</span>
-            </div>
-        `;
-    }).join('');
+    // 定期刷新日志
+    setInterval(loadLogs, 5000);
     
-    // 自动滚动到底部
-    container.scrollTop = container.scrollHeight;
-}
+    // 初始加载
+    loadLogs();
+});
 
 // 清除日志
 function clearLogs() {
-    if (confirm('<%:确定要清除所有日志吗？%>')) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '<%=luci.dispatcher.build_url("admin/system/filetransfer/clear_logs")%>', true);
-        
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                loadLogs();
+    if (confirm('<%:Are you sure you want to clear all logs?%>')) {
+        fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "clear_logs")%>', {
+            method: 'POST'
+        })
+        .then(response => {
+            if (response.ok) {
+                document.getElementById('log-content').innerHTML = '<div class="no-logs">Logs cleared</div>';
             } else {
-                alert('清除日志失败：' + xhr.responseText);
+                alert('Failed to clear logs');
             }
-        };
-        
-        xhr.send();
+        })
+        .catch(error => {
+            alert('Failed to clear logs');
+        });
     }
 }
 
 // 导出日志
 function exportLogs() {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '<%=luci.dispatcher.build_url("admin/system/filetransfer/export_logs")%>', true);
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            var blob = new Blob([xhr.responseText], { type: 'text/plain' });
-            var url = window.URL.createObjectURL(blob);
-            var a = document.createElement('a');
+    fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "export_logs")%>')
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
             a.href = url;
-            a.download = 'filetransfer_logs.txt';
+            a.download = 'filetransfer_logs_' + new Date().toISOString().slice(0, 10) + '.txt';
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
-        } else {
-            alert('导出日志失败：' + xhr.responseText);
-        }
-    };
-    
-    xhr.send();
+        })
+        .catch(error => {
+            alert('Failed to export logs');
+        });
 }
-
-// 监听筛选条件变化
-document.getElementById('log-level').addEventListener('change', loadLogs);
-document.getElementById('log-search').addEventListener('input', loadLogs);
 </script>
-
-<style>
-.log-controls {
-    margin-bottom: 20px;
-    padding: 10px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
-}
-
-.log-filters {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.log-filters select,
-.log-filters input {
-    padding: 6px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.log-container {
-    height: 500px;
-    overflow-y: auto;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: #fff;
-}
-
-.log-content {
-    padding: 10px;
-}
-
-.log-entry {
-    padding: 8px;
-    border-bottom: 1px solid #eee;
-    font-family: monospace;
-}
-
-.log-time {
-    color: #757575;
-    margin-right: 10px;
-}
-
-.log-level {
-    padding: 2px 6px;
-    border-radius: 3px;
-    margin-right: 10px;
-    font-size: 12px;
-}
-
-.log-info .log-level {
-    background-color: #E3F2FD;
-    color: #1976D2;
-}
-
-.log-warning .log-level {
-    background-color: #FFF3E0;
-    color: #F57C00;
-}
-
-.log-error .log-level {
-    background-color: #FFEBEE;
-    color: #D32F2F;
-}
-
-button {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    background-color: #2196F3;
-    color: white;
-    cursor: pointer;
-}
-
-button:hover {
-    background-color: #1976D2;
-}
-</style>
 
 <%+footer%> 
