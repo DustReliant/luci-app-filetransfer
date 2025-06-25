@@ -37,16 +37,72 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/cbi
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_DIR) $(1)/usr/share/filetransfer
+	$(INSTALL_DIR) $(1)/www/luci-static/resources/filetransfer/lib
 	
 	$(INSTALL_DATA) ./luasrc/model/cbi/updownload.lua $(1)/usr/lib/lua/luci/model/cbi/updownload.lua
 	$(INSTALL_DATA) ./luasrc/model/cbi/log.lua $(1)/usr/lib/lua/luci/model/cbi/log.lua
 	$(INSTALL_DATA) ./luasrc/controller/filetransfer.lua $(1)/usr/lib/lua/luci/controller/filetransfer.lua
-	#$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
-	#$(INSTALL_DATA) $(PKG_BUILD_DIR)/*.*.lmo $(1)/usr/lib/lua/luci/i18n/
-	$(CP) $(PKG_BUILD_DIR)/root/* $(1)/
 	$(INSTALL_DATA) ./luasrc/view/cbi/* $(1)/usr/lib/lua/luci/view/cbi/
+	
+	# 安装 init.d 脚本并设置执行权限
+	$(INSTALL_BIN) ./root/etc/init.d/filetransfer $(1)/etc/init.d/filetransfer
+	
+	# 安装配置文件
+	$(INSTALL_CONF) ./root/etc/config/filetransfer $(1)/etc/config/filetransfer
+	
+	# 安装其他文件
+	$(INSTALL_DATA) ./root/usr/share/filetransfer/log.sh $(1)/usr/share/filetransfer/log.sh
+	$(INSTALL_DATA) ./root/www/luci-static/resources/filetransfer/lib/* $(1)/www/luci-static/resources/filetransfer/lib/
+	
+	# 安装 CBI 模型和视图文件
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/filetransfer
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/filetransfer
+	$(INSTALL_DATA) ./luasrc/model/cbi/filetransfer/* $(1)/usr/lib/lua/luci/model/cbi/filetransfer/
+	$(INSTALL_DATA) ./luasrc/view/filetransfer/* $(1)/usr/lib/lua/luci/view/filetransfer/
+endef
+
+# 添加 i18n 支持
+define Package/luci-i18n-filetransfer-zh-cn
+	SECTION:=luci
+	CATEGORY:=LuCI
+	SUBMENU:=4. Translations
+	TITLE:=filetransfer Chinese Simplified
+	PKGARCH:=all
+	DEPENDS:=luci-app-filetransfer
+endef
+
+define Package/luci-i18n-filetransfer-zh-cn/description
+	Translation for luci-app-filetransfer - 简体中文 (Chinese Simplified)
+endef
+
+define Package/luci-i18n-filetransfer-zh-cn/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
+	$(INSTALL_DATA) ./po/filetransfer.zh-cn.lmo $(1)/usr/lib/lua/luci/i18n/filetransfer.zh-cn.lmo
+endef
+
+define Package/luci-i18n-filetransfer-en
+	SECTION:=luci
+	CATEGORY:=LuCI
+	SUBMENU:=4. Translations
+	TITLE:=filetransfer English
+	PKGARCH:=all
+	DEPENDS:=luci-app-filetransfer
+endef
+
+define Package/luci-i18n-filetransfer-en/description
+	Translation for luci-app-filetransfer - English
+endef
+
+define Package/luci-i18n-filetransfer-en/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
+	$(INSTALL_DATA) ./po/filetransfer.en.lmo $(1)/usr/lib/lua/luci/i18n/filetransfer.en.lmo
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
+$(eval $(call BuildPackage,luci-i18n-filetransfer-zh-cn))
+$(eval $(call BuildPackage,luci-i18n-filetransfer-en))

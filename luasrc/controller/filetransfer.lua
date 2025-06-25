@@ -354,21 +354,30 @@ end
 -- 文件列表获取函数
 function action_list()
     local files = {}
-    local dir = io.popen("ls -l " .. UPLOAD_DIR)
+    local dir = io.popen("ls -la " .. UPLOAD_DIR)
     if dir then
         for line in dir:lines() do
             local file = {}
-            file.name = line:match("[^%s]+$")
-            file.size = line:match("(%d+)")
-            file.date = line:match("%w+%s+%d+%s+%d+:%d+")
-            if file.name and file.name ~= "." and file.name ~= ".." then
-                table.insert(files, file)
+            local parts = {}
+            for part in line:gmatch("%S+") do
+                table.insert(parts, part)
+            end
+            
+            if #parts >= 9 then
+                file.name = parts[9]
+                file.size = parts[5]
+                file.date = parts[6] .. " " .. parts[7] .. " " .. parts[8]
+                file.mtime = os.time()
+                
+                if file.name and file.name ~= "." and file.name ~= ".." then
+                    table.insert(files, file)
+                end
             end
         end
         dir:close()
     end
     
-    http.write_json(files)
+    http.write_json({files = files})
 end
 
 -- 文件删除函数
@@ -462,8 +471,101 @@ function action_clear_logs()
     if file then
         file:write("")
         file:close()
+        log_to_file("Logs cleared by user")
         http.write_json({status = "success"})
     else
         http.status(500, "Failed to clear logs")
+    end
+end
+
+-- 导出日志函数
+function action_export_logs()
+    local log_file = "/tmp/filetransfer.log"
+    local file = io.open(log_file, "r")
+    if file then
+        local content = file:read("*all")
+        file:close()
+        
+        http.header("Content-Disposition", "attachment; filename=filetransfer_logs_" .. os.date("%Y%m%d") .. ".txt")
+        http.header("Content-Type", "text/plain")
+        http.write(content)
+    else
+        http.status(404, "Log file not found")
+    end
+end
+
+-- 保存设置函数
+function action_save_settings()
+    local uci = require "luci.model.uci".cursor()
+    local settings = http.formvalue()
+    
+    for key, value in pairs(settings) do
+        if key ~= "token" then
+            uci:set("filetransfer", "config", key, value)
+        end
+    end
+    
+    uci:commit("filetransfer")
+    log_to_file("Settings saved")
+    http.write_json({status = "success"})
+end
+
+-- 获取设置函数
+function action_get_settings()
+    local uci = require "luci.model.uci".cursor()
+    local settings = {}
+    
+    settings.upload_dir = uci:get("filetransfer", "config", "upload_dir") or "/tmp/upload/"
+    settings.max_file_size = uci:get("filetransfer", "config", "max_file_size") or "50"
+    settings.allowed_extensions = uci:get("filetransfer", "config", "allowed_extensions") or "ipk,tar,gz,zip,txt,conf,json"
+    settings.log_level = uci:get("filetransfer", "config", "log_level") or "info"
+    settings.log_retention = uci:get("filetransfer", "config", "log_retention") or "7"
+    settings.auto_clean = uci:get("filetransfer", "config", "auto_clean") or "1"
+    settings.enable_csrf = uci:get("filetransfer", "config", "enable_csrf") or "1"
+    settings.enable_ssl = uci:get("filetransfer", "config", "enable_ssl") or "0"
+    settings.allowed_ips = uci:get("filetransfer", "config", "allowed_ips") or ""
+    
+    http.write_json(settings)
+end
+
+-- 上传进度函数
+function action_upload_progress()
+    -- 实现上传进度跟踪
+    http.write_json({progress = 0})
+end
+
+-- 下载进度函数
+function action_download_progress()
+    -- 实现下载进度跟踪
+    http.write_json({progress = 0})
+end
+
+-- 文件预览函数
+function action_preview()
+    local filename = http.formvalue("filename")
+    if not filename then
+        http.status(400, "Bad Request")
+        return
+    end
+    
+    filename = sanitize_filename(filename)
+    if not filename then
+        http.status(400, "Invalid filename")
+        return
+    end
+    
+    local path = UPLOAD_DIR .. filename
+    if not fs.stat(path) then
+        http.status(404, "File not found")
+        return
+    end
+    
+    local f = io.open(path, "r")
+    if f then
+        local content = f:read("*all")
+        f:close()
+        http.write_json({content = content})
+    else
+        http.status(500, "Failed to read file")
     end
 end

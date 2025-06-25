@@ -7,12 +7,12 @@
 
 <div class="cbi-map">
     <h2 name="content"><%:File Transfer%></h2>
-    
-    <div class="cbi-section">
+
+<div class="cbi-section">
         <div class="cbi-section-descr"><%:Upload and manage files through Web interface%></div>
-        
-        <!-- 文件上传区域 -->
-        <div class="upload-area" id="upload-area">
+    
+    <!-- 文件上传区域 -->
+    <div class="upload-area" id="upload-area">
             <div class="upload-zone" id="upload-zone">
                 <div class="upload-icon">📁</div>
                 <p><%:Drag files here or click to upload%></p>
@@ -22,16 +22,16 @@
                 <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
                     <i class="icon-upload"></i> <%:Upload%>
                 </button>
-            </div>
+        </div>
             <div class="progress-container" id="progress-container" style="display: none;">
-                <div class="progress-bar">
+            <div class="progress-bar">
                     <div class="progress-fill" id="progress-fill"></div>
                 </div>
                 <span class="progress-text" id="progress-text">0%</span>
-            </div>
         </div>
-        
-        <!-- 文件列表 -->
+    </div>
+
+    <!-- 文件列表 -->
         <div class="file-list-section">
             <h3><%:File List%></h3>
             <div class="file-controls">
@@ -42,18 +42,18 @@
             </div>
             <div class="file-table-container">
                 <table class="file-table" id="file-table">
-                    <thead>
-                        <tr>
+            <thead>
+                <tr>
                             <th><%:File Name%></th>
                             <th><%:Size%></th>
                             <th><%:Modify Time%></th>
                             <th><%:Actions%></th>
-                        </tr>
-                    </thead>
+                </tr>
+            </thead>
                     <tbody id="file-table-body">
                         <!-- 文件列表将通过 JavaScript 动态生成 -->
-                    </tbody>
-                </table>
+            </tbody>
+        </table>
             </div>
         </div>
     </div>
@@ -286,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('filename', file.name);
 
         const xhr = new XMLHttpRequest();
 
@@ -313,13 +314,13 @@ document.addEventListener('DOMContentLoaded', function() {
             showMessage('<%:File upload failed%>', 'error');
         });
 
-        xhr.open('POST', '<%=luci.dispatcher.build_url("admin", "filetransfer", "upload")%>');
+        xhr.open('POST', '<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "upload")%>');
         xhr.send(formData);
     }
 
     // 刷新文件列表
     function refreshFileList() {
-        fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "list")%>')
+        fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "list")%>')
             .then(response => response.json())
             .then(data => {
                 updateFileTable(data.files || []);
@@ -353,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sizeCell.textContent = formatFileSize(file.size);
             
             const mtimeCell = row.insertCell(2);
-            mtimeCell.textContent = new Date(file.mtime * 1000).toLocaleString();
+            mtimeCell.textContent = file.date || new Date().toLocaleString();
             
             const actionsCell = row.insertCell(3);
             const actionsDiv = document.createElement('div');
@@ -361,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 下载按钮
             const downloadBtn = document.createElement('a');
-            downloadBtn.href = '<%=luci.dispatcher.build_url("admin", "filetransfer", "download")%>/' + encodeURIComponent(file.name);
+            downloadBtn.href = '<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "download")%>?filename=' + encodeURIComponent(file.name);
             downloadBtn.className = 'btn btn-success';
             downloadBtn.innerHTML = '<i class="icon-download"></i> <%:Download%>';
             actionsDiv.appendChild(downloadBtn);
@@ -393,15 +394,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // 删除文件
     function deleteFile(filename) {
         if (confirm('<%:Are you sure you want to delete file "%s"?%>'.replace('%s', filename))) {
-            fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "delete")%>/' + encodeURIComponent(filename), {
-                method: 'POST'
+            const formData = new FormData();
+            formData.append('filename', filename);
+            
+            fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "delete")%>', {
+                method: 'POST',
+                body: formData
             })
-            .then(response => {
-                if (response.ok) {
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
                     showMessage('<%:File deleted successfully%>', 'success');
                     refreshFileList();
                 } else {
-                    showMessage('<%:File deletion failed:%> ' + xhr.responseText, 'error');
+                    showMessage('<%:File deletion failed%>', 'error');
                 }
             })
             .catch(error => {
@@ -413,12 +419,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // 安装包
     function installPackage(filename) {
         if (confirm('<%:Are you sure you want to install this IPK file?%>')) {
-            fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "install")%>/' + encodeURIComponent(filename), {
-                method: 'POST'
+            const formData = new FormData();
+            formData.append('filename', filename);
+            
+            fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "install_ipk")%>', {
+                method: 'POST',
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.status === 'success') {
                     showMessage(data.message || '<%:Installation complete%>', 'success');
                 } else {
                     showMessage('<%:Installation failed%>', 'error');

@@ -161,8 +161,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 加载日志
     function loadLogs() {
-        fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "logs")%>')
-            .then(response => response.text())
+        fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "get_logs")%>')
+            .then(response => response.json())
             .then(data => {
                 allLogs = parseLogs(data);
                 displayLogs();
@@ -175,8 +175,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 解析日志
     function parseLogs(logData) {
-        const lines = logData.split('\n').filter(line => line.trim());
-        return lines.map(line => {
+        if (!Array.isArray(logData)) {
+            logData = [logData];
+        }
+        
+        return logData.map(line => {
             const match = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(\w+)\] (.+)$/);
             if (match) {
                 return {
@@ -255,11 +258,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // 清除日志
 function clearLogs() {
     if (confirm('<%:Are you sure you want to clear all logs?%>')) {
-        fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "clear_logs")%>', {
+        fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "clear_logs")%>', {
             method: 'POST'
         })
-        .then(response => {
-            if (response.ok) {
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
                 document.getElementById('log-content').innerHTML = '<div class="no-logs">Logs cleared</div>';
             } else {
                 alert('Failed to clear logs');
@@ -273,21 +277,7 @@ function clearLogs() {
 
 // 导出日志
 function exportLogs() {
-    fetch('<%=luci.dispatcher.build_url("admin", "filetransfer", "export_logs")%>')
-        .then(response => response.blob())
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'filetransfer_logs_' + new Date().toISOString().slice(0, 10) + '.txt';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        })
-        .catch(error => {
-            alert('Failed to export logs');
-        });
+    window.open('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "export_logs")%>', '_blank');
 }
 </script>
 
