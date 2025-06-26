@@ -136,59 +136,6 @@ opkg install luci-i18n-filetransfer-en_1.2.0_all.ipk
 - 合理设置文件大小限制
 - 监控系统资源使用情况
 
-## 常见问题
-
-### 1. 上传失败
-**可能原因：**
-- 存储空间不足
-- 文件大小超过限制
-- 文件类型不被允许
-- 权限设置问题
-
-**解决方法：**
-- 检查存储空间：`df -h`
-- 验证文件大小是否超限
-- 确认文件类型是否在允许列表中
-- 查看操作日志了解具体原因
-- 检查目录权限：`ls -la /tmp/upload/`
-
-### 2. 下载失败
-**可能原因：**
-- 网络连接问题
-- 文件不存在
-- 存储空间不足
-- 权限问题
-
-**解决方法：**
-- 检查网络连接：`ping 8.8.8.8`
-- 确认文件是否存在：`ls -la /tmp/upload/`
-- 验证存储空间
-- 查看操作日志了解具体原因
-
-### 3. 界面无法访问
-**可能原因：**
-- 插件未正确安装
-- LuCI服务未启动
-- 防火墙阻止访问
-
-**解决方法：**
-- 检查插件安装：`opkg list-installed | grep filetransfer`
-- 重启LuCI服务：`/etc/init.d/uhttpd restart`
-- 检查防火墙设置
-- 查看系统日志：`logread`
-
-### 4. 日志功能异常
-**可能原因：**
-- 日志文件权限问题
-- 存储空间不足
-- 日志级别设置不当
-
-**解决方法：**
-- 检查日志文件权限：`ls -la /tmp/filetransfer.log`
-- 清理存储空间
-- 调整日志级别设置
-- 重启服务：`/etc/init.d/filetransfer restart`
-
 ## 更新日志
 
 ### v1.2.0 (2024-06-26)
@@ -203,7 +150,7 @@ opkg install luci-i18n-filetransfer-en_1.2.0_all.ipk
 - **新增**：文件类型图标显示
 - **改进**：响应式设计，适配移动设备
 
-### v1.1.0 (2024-03-xx)
+### v1.1.0 (2024)
 - **新增**：操作日志功能
 - **优化**：界面设计，现代化UI
 - **新增**：拖拽上传支持
@@ -211,7 +158,7 @@ opkg install luci-i18n-filetransfer-en_1.2.0_all.ipk
 - **新增**：日志导出功能
 - **优化**：文件管理界面
 
-### v1.0.0 (2024-11-xx)
+### v1.0.0 (2024)
 - **初始版本**：基本文件上传下载功能
 - **新增**：文件管理功能
 - **实现**：CSRF防护机制
@@ -228,33 +175,5 @@ opkg install luci-i18n-filetransfer-en_1.2.0_all.ipk
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
-
-### 贡献指南
-1. Fork 本项目
-2. 创建功能分支：`git checkout -b feature/AmazingFeature`
-3. 提交更改：`git commit -m 'Add some AmazingFeature'`
-4. 推送分支：`git push origin feature/AmazingFeature`
-5. 提交 Pull Request
-
-### 问题反馈
-- 使用 [GitHub Issues](https://github.com/DustReliant/luci-app-filetransfer/issues) 报告问题
-- 提供详细的错误信息和复现步骤
-- 包含系统版本和插件版本信息
-
-## 致谢
-
-感谢所有为本项目做出贡献的开发者，特别感谢：
-- OpenWrt 社区
-- LuCI 开发团队
-- 所有测试用户和反馈者
-
-## 相关链接
-
-- [项目主页](https://github.com/DustReliant/luci-app-filetransfer)
-- [问题反馈](https://github.com/DustReliant/luci-app-filetransfer/issues)
-- [OpenWrt官网](https://openwrt.org/)
-- [LuCI文档](https://openwrt.org/docs/guide-user/luci/start)
-
-
 
 

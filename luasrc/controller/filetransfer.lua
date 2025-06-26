@@ -115,6 +115,7 @@ function index()
     -- 文件管理相关
     entry({"admin", "system", "filetransfer", "list"}, call("action_list")).leaf = true
     entry({"admin", "system", "filetransfer", "delete"}, call("action_delete")).leaf = true
+    entry({"admin", "system", "filetransfer", "clear_all"}, call("action_clear_all")).leaf = true
     entry({"admin", "system", "filetransfer", "preview"}, call("action_preview")).leaf = true
     entry({"admin", "system", "filetransfer", "install_ipk"}, call("action_install_ipk")).leaf = true
     
@@ -252,6 +253,44 @@ function action_delete()
     else
         http.status(500, "Failed to delete file")
     end
+end
+
+-- 清空所有文件函数
+function action_clear_all()
+    ensure_upload_dir()
+    
+    local success_count = 0
+    local error_count = 0
+    local dir = io.popen("ls -1 '" .. UPLOAD_DIR .. "'")
+    
+    if dir then
+        for filename in dir:lines() do
+            if filename ~= "" and filename ~= "." and filename ~= ".." then
+                local path = UPLOAD_DIR .. filename
+                if fs.unlink(path) then
+                    success_count = success_count + 1
+                else
+                    error_count = error_count + 1
+                end
+            end
+        end
+        dir:close()
+    end
+    
+    if success_count > 0 then
+        log_to_file("Cleared " .. success_count .. " files from upload directory")
+    end
+    
+    if error_count > 0 then
+        log_to_file("Failed to delete " .. error_count .. " files")
+    end
+    
+    http.write_json({
+        status = "success", 
+        message = "Cleared " .. success_count .. " files",
+        success_count = success_count,
+        error_count = error_count
+    })
 end
 
 -- 安装 IPK 文件

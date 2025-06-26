@@ -12,15 +12,55 @@
         <div class="cbi-section-descr"><%:View file transfer system operation logs%></div>
         
         <div class="log-controls">
-            <select id="log-level">
-                <option value="all"><%:All Levels%></option>
-                <option value="info"><%:Info%></option>
-                <option value="warning"><%:Warning%></option>
-                <option value="error"><%:Error%></option>
-            </select>
-            <input type="text" id="log-search" placeholder="<%:Search logs...%>">
-            <button onclick="clearLogs()"><%:Clear Logs%></button>
-            <button onclick="exportLogs()"><%:Export Logs%></button>
+            <div class="control-group">
+                <label for="log-level"><%:Log Level%></label>
+                <select id="log-level" class="log-select">
+                    <option value="all"><%:All Levels%></option>
+                    <option value="info"><%:Info%></option>
+                    <option value="warning"><%:Warning%></option>
+                    <option value="error"><%:Error%></option>
+                    <option value="debug"><%:Debug%></option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="log-search"><%:Search%></label>
+                <div class="search-box">
+                    <i class="icon-search"></i>
+                    <input type="text" id="log-search" placeholder="<%:Search logs...%>">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <button class="btn btn-secondary" onclick="refreshLogs()" title="<%:Refresh logs%>">
+                    <i class="icon-refresh"></i> <%:Refresh%>
+                </button>
+                <button class="btn btn-warning" onclick="clearLogs()" title="<%:Clear all logs%>">
+                    <i class="icon-trash"></i> <%:Clear%>
+                </button>
+                <button class="btn btn-primary" onclick="exportLogs()" title="<%:Export logs to file%>">
+                    <i class="icon-download"></i> <%:Export%>
+                </button>
+            </div>
+        </div>
+        
+        <div class="log-stats">
+            <div class="stat-item">
+                <span class="stat-label"><%:Total Entries%></span>
+                <span class="stat-value" id="total-entries">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label"><%:Info%></span>
+                <span class="stat-value info" id="info-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label"><%:Warning%></span>
+                <span class="stat-value warning" id="warning-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label"><%:Error%></span>
+                <span class="stat-value error" id="error-count">0</span>
+            </div>
         </div>
         
         <div class="log-container">
@@ -32,122 +72,447 @@
 </div>
 
 <style>
+/* 全局样式 */
+.cbi-map {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.cbi-section {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+.cbi-section-descr {
+    color: #666;
+    font-size: 16px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+/* 控制区域样式 */
 .log-controls {
-    margin-bottom: 20px;
     display: flex;
-    gap: 10px;
+    gap: 20px;
+    align-items: flex-end;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.control-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.log-select {
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    background: white;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.log-select:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-box {
+    position: relative;
+    display: flex;
     align-items: center;
+}
+
+.search-box i {
+    position: absolute;
+    left: 15px;
+    color: #999;
+    font-size: 16px;
+}
+
+.search-box input[type="text"] {
+    padding: 10px 15px 10px 45px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    background: white;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    min-width: 250px;
+}
+
+.search-box input[type="text"]:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* 按钮样式 */
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(108, 117, 125, 0.3);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    color: white;
+}
+
+.btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+}
+
+/* 统计信息样式 */
+.log-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
     flex-wrap: wrap;
 }
 
-.log-controls select,
-.log-controls input {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+.stat-item {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px;
+    transition: all 0.3s ease;
 }
 
-.log-controls input[type="text"] {
-    flex: 1;
-    min-width: 200px;
+.stat-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-.log-controls button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
+.stat-label {
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
 }
 
-.log-controls button:hover {
-    background-color: #0056b3;
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
 }
 
+.stat-value.info {
+    color: #17a2b8;
+}
+
+.stat-value.warning {
+    color: #ffc107;
+}
+
+.stat-value.error {
+    color: #dc3545;
+}
+
+/* 日志容器样式 */
 .log-container {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: #f8f9fa;
+    border: 2px solid #e0e0e0;
+    border-radius: 15px;
+    background: white;
     max-height: 600px;
     overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 .log-content {
-    padding: 15px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    line-height: 1.4;
+    padding: 20px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
     white-space: pre-wrap;
     color: #333;
 }
 
 .log-entry {
-    margin-bottom: 5px;
-    padding: 5px;
-    border-radius: 3px;
+    margin-bottom: 8px;
+    padding: 12px 15px;
+    border-radius: 10px;
+    border-left: 4px solid;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.log-entry::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+}
+
+.log-entry:hover::before {
+    transform: translateX(100%);
 }
 
 .log-entry.info {
-    background-color: #d1ecf1;
-    border-left: 3px solid #17a2b8;
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    border-left-color: #17a2b8;
 }
 
 .log-entry.warning {
-    background-color: #fff3cd;
-    border-left: 3px solid #ffc107;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-left-color: #ffc107;
 }
 
 .log-entry.error {
-    background-color: #f8d7da;
-    border-left: 3px solid #dc3545;
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-left-color: #dc3545;
 }
 
 .log-entry.debug {
-    background-color: #e2e3e5;
-    border-left: 3px solid #6c757d;
+    background: linear-gradient(135deg, #e2e3e5 0%, #d6d8db 100%);
+    border-left-color: #6c757d;
 }
 
 .log-timestamp {
     color: #666;
-    font-weight: bold;
+    font-weight: 600;
+    font-size: 12px;
+    display: inline-block;
+    margin-right: 10px;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
 .log-level {
     display: inline-block;
-    padding: 2px 6px;
-    border-radius: 3px;
+    padding: 3px 8px;
+    border-radius: 6px;
     font-size: 10px;
-    font-weight: bold;
+    font-weight: 700;
     text-transform: uppercase;
-    margin-right: 5px;
+    margin-right: 10px;
+    letter-spacing: 0.5px;
 }
 
 .log-level.info {
-    background-color: #17a2b8;
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
     color: white;
 }
 
 .log-level.warning {
-    background-color: #ffc107;
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
     color: #212529;
 }
 
 .log-level.error {
-    background-color: #dc3545;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
     color: white;
 }
 
 .log-level.debug {
-    background-color: #6c757d;
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
     color: white;
+}
+
+.log-message {
+    color: #333;
+    font-weight: 500;
 }
 
 .no-logs {
     text-align: center;
-    color: #666;
+    color: #999;
     font-style: italic;
-    margin: 20px 0;
+    margin: 40px 0;
+    font-size: 16px;
+}
+
+.no-logs::before {
+    content: '📋';
+    display: block;
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+/* 滚动条样式 */
+.log-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.log-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .cbi-section {
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .log-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .control-group {
+        align-items: stretch;
+    }
+    
+    .search-box input[type="text"] {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .log-stats {
+        justify-content: center;
+    }
+    
+    .stat-item {
+        min-width: 80px;
+        padding: 10px 15px;
+    }
+    
+    .stat-value {
+        font-size: 20px;
+    }
+    
+    .log-content {
+        padding: 15px;
+        font-size: 12px;
+    }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .cbi-section {
+        background: rgba(30, 30, 30, 0.95);
+        color: #fff;
+    }
+    
+    .log-controls {
+        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    }
+    
+    .log-container {
+        background: #2a2a2a;
+        border-color: #444;
+    }
+    
+    .log-content {
+        color: #fff;
+    }
+    
+    .stat-item {
+        background: #2a2a2a;
+        color: #fff;
+    }
+    
+    .log-entry {
+        color: #fff;
+    }
+    
+    .log-entry.info {
+        background: linear-gradient(135deg, #1a3a3f 0%, #0f2a2f 100%);
+    }
+    
+    .log-entry.warning {
+        background: linear-gradient(135deg, #3a2f0f 0%, #2a1f0f 100%);
+    }
+    
+    .log-entry.error {
+        background: linear-gradient(135deg, #3a0f0f 0%, #2a0f0f 100%);
+    }
+    
+    .log-entry.debug {
+        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    }
 }
 </style>
 
@@ -166,6 +531,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 allLogs = parseLogs(data);
                 displayLogs();
+                updateStats();
             })
             .catch(error => {
                 console.error('Error loading logs:', error);
@@ -203,82 +569,95 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedLevel = logLevel.value;
         const searchTerm = logSearch.value.toLowerCase();
         
-        let filteredLogs = allLogs;
-        
-        // 按级别过滤
-        if (selectedLevel !== 'all') {
-            filteredLogs = filteredLogs.filter(log => log.level === selectedLevel);
-        }
-        
-        // 按搜索词过滤
-        if (searchTerm) {
-            filteredLogs = filteredLogs.filter(log => 
-                log.message.toLowerCase().includes(searchTerm) ||
-                log.timestamp.includes(searchTerm)
-            );
-        }
+        const filteredLogs = allLogs.filter(log => {
+            const levelMatch = selectedLevel === 'all' || log.level === selectedLevel;
+            const searchMatch = log.message.toLowerCase().includes(searchTerm) || 
+                              log.timestamp.toLowerCase().includes(searchTerm);
+            return levelMatch && searchMatch;
+        });
         
         if (filteredLogs.length === 0) {
             logContent.innerHTML = '<div class="no-logs">No logs found</div>';
             return;
         }
         
-        const logHtml = filteredLogs.map(log => {
-            return `<div class="log-entry ${log.level}">
+        logContent.innerHTML = filteredLogs.map(log => `
+            <div class="log-entry ${log.level}">
                 <span class="log-timestamp">${log.timestamp}</span>
                 <span class="log-level ${log.level}">${log.level}</span>
-                <span class="log-message">${escapeHtml(log.message)}</span>
-            </div>`;
-        }).join('');
-        
-        logContent.innerHTML = logHtml;
-        
-        // 自动滚动到底部
-        logContent.scrollTop = logContent.scrollHeight;
+                <span class="log-message">${log.message}</span>
+            </div>
+        `).join('');
     }
     
-    // HTML 转义
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    // 更新统计信息
+    function updateStats() {
+        const total = allLogs.length;
+        const info = allLogs.filter(log => log.level === 'info').length;
+        const warning = allLogs.filter(log => log.level === 'warning').length;
+        const error = allLogs.filter(log => log.level === 'error').length;
+        
+        document.getElementById('total-entries').textContent = total;
+        document.getElementById('info-count').textContent = info;
+        document.getElementById('warning-count').textContent = warning;
+        document.getElementById('error-count').textContent = error;
     }
     
-    // 事件监听
+    // 刷新日志
+    window.refreshLogs = function() {
+        loadLogs();
+    };
+    
+    // 清空日志
+    window.clearLogs = function() {
+        if (confirm('<%:Are you sure you want to clear all logs?%>')) {
+            fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "clear_logs")%>', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showMessage('<%:Logs cleared successfully%>', 'success');
+                    loadLogs();
+                } else {
+                    showMessage('<%:Failed to clear logs%>', 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('<%:Failed to clear logs%>', 'error');
+            });
+        }
+    };
+    
+    // 导出日志
+    window.exportLogs = function() {
+        window.open('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "export_logs")%>', '_blank');
+    };
+    
+    // 显示消息
+    function showMessage(message, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ' + type;
+        messageDiv.textContent = message;
+        document.body.appendChild(messageDiv);
+
+        setTimeout(function() {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 5000);
+    }
+    
+    // 事件监听器
     logLevel.addEventListener('change', displayLogs);
     logSearch.addEventListener('input', displayLogs);
     
-    // 定期刷新日志
-    setInterval(loadLogs, 5000);
-    
     // 初始加载
     loadLogs();
+    
+    // 自动刷新（每30秒）
+    setInterval(loadLogs, 30000);
 });
-
-// 清除日志
-function clearLogs() {
-    if (confirm('<%:Are you sure you want to clear all logs?%>')) {
-        fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "clear_logs")%>', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                document.getElementById('log-content').innerHTML = '<div class="no-logs">Logs cleared</div>';
-            } else {
-                alert('Failed to clear logs');
-            }
-        })
-        .catch(error => {
-            alert('Failed to clear logs');
-        });
-    }
-}
-
-// 导出日志
-function exportLogs() {
-    window.open('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "export_logs")%>', '_blank');
-}
 </script>
 
 <%+footer%> 
