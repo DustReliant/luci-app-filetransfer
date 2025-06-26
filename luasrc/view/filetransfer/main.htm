@@ -26,7 +26,7 @@
             <div class="progress-container" id="progress-container" style="display: none;">
             <div class="progress-bar">
                     <div class="progress-fill" id="progress-fill"></div>
-                </div>
+            </div>
                 <span class="progress-text" id="progress-text">0%</span>
         </div>
     </div>
@@ -62,74 +62,91 @@
 <style>
 .upload-area {
     margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .upload-zone {
     border: 2px dashed #ccc;
-    border-radius: 8px;
-    padding: 40px;
+    border-radius: 12px;
+    padding: 48px 32px;
     text-align: center;
-    background-color: #f9f9f9;
-    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #f9f9f9 60%, #e3f2fd 100%);
+    transition: all 0.3s cubic-bezier(.4,2,.6,1);
     cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    position: relative;
 }
-
 .upload-zone:hover,
 .upload-zone.dragover {
-    border-color: #007bff;
-    background-color: #f0f8ff;
+    border-color: #2196f3;
+    background: linear-gradient(135deg, #e3f2fd 60%, #f9f9f9 100%);
+    box-shadow: 0 4px 16px rgba(33,150,243,0.08);
 }
-
 .upload-icon {
-    font-size: 48px;
-    margin-bottom: 20px;
-    color: #007bff;
+    font-size: 56px;
+    margin-bottom: 18px;
+    color: #2196f3;
+    animation: bounce 1.2s infinite alternate;
 }
-
+@keyframes bounce {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-8px); }
+}
 .upload-hint {
     font-size: 14px;
-    color: #666;
-    margin: 5px 0;
+    color: #888;
+    margin: 4px 0;
 }
-
 .btn {
-    padding: 10px 20px;
+    padding: 10px 22px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     text-decoration: none;
     display: inline-block;
     margin: 5px;
+    font-size: 15px;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
 }
-
 .btn-primary {
-    background-color: #007bff;
+    background: linear-gradient(90deg, #2196f3 60%, #42a5f5 100%);
     color: white;
 }
-
+.btn-primary:hover {
+    background: linear-gradient(90deg, #42a5f5 60%, #2196f3 100%);
+    box-shadow: 0 2px 8px rgba(33,150,243,0.12);
+    transform: translateY(-2px) scale(1.04);
+}
 .btn-secondary {
-    background-color: #6c757d;
+    background: #6c757d;
     color: white;
 }
-
+.btn-secondary:hover {
+    background: #495057;
+}
 .btn-success {
-    background-color: #28a745;
+    background: #28a745;
     color: white;
 }
-
+.btn-success:hover {
+    background: #218838;
+}
 .btn-danger {
-    background-color: #dc3545;
+    background: #dc3545;
     color: white;
 }
-
-.btn:hover {
-    opacity: 0.8;
+.btn-danger:hover {
+    background: #b71c1c;
 }
-
 .progress-container {
     margin-top: 20px;
+    width: 80%;
+    max-width: 400px;
 }
-
 .progress-bar {
     width: 100%;
     height: 20px;
@@ -138,78 +155,90 @@
     overflow: hidden;
     position: relative;
 }
-
 .progress-fill {
     height: 100%;
-    background-color: #007bff;
-    transition: width 0.3s ease;
+    background: linear-gradient(90deg, #2196f3 60%, #42a5f5 100%);
+    transition: width 0.3s cubic-bezier(.4,2,.6,1);
     width: 0%;
 }
-
 .progress-text {
     display: block;
     text-align: center;
     margin-top: 5px;
     font-size: 14px;
 }
-
 .file-list-section {
-    margin-top: 30px;
+    margin-top: 36px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 18px 12px 8px 12px;
 }
-
 .file-controls {
     margin-bottom: 15px;
     display: flex;
     gap: 10px;
     align-items: center;
 }
-
 .file-controls input[type="text"] {
     flex: 1;
     padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    background: #f8f9fa;
+    transition: border 0.2s;
 }
-
+.file-controls input[type="text"]:focus {
+    border: 1.5px solid #2196f3;
+    outline: none;
+}
 .file-table-container {
     overflow-x: auto;
 }
-
 .file-table {
     width: 100%;
     border-collapse: collapse;
     background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
 }
-
 .file-table th,
 .file-table td {
     padding: 12px;
     text-align: left;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #eee;
 }
-
 .file-table th {
-    background-color: #f8f9fa;
+    background: #f1f8ff;
     font-weight: bold;
     position: sticky;
     top: 0;
+    z-index: 1;
 }
-
 .file-table tr:hover {
-    background-color: #f5f5f5;
+    background: #e3f2fd;
+    transition: background 0.2s;
 }
-
 .file-actions {
     display: flex;
-    gap: 5px;
+    gap: 7px;
 }
-
 .file-actions .btn {
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 5px 12px;
+    font-size: 13px;
     margin: 0;
+    opacity: 0.92;
+    transition: opacity 0.2s, box-shadow 0.2s;
 }
-
+.file-actions .btn:hover {
+    opacity: 1;
+    box-shadow: 0 2px 8px rgba(33,150,243,0.10);
+}
+.file-type-icon {
+    font-size: 18px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
 .message {
     padding: 15px;
     margin: 10px 0;
@@ -219,18 +248,39 @@
     right: 20px;
     z-index: 1000;
     min-width: 300px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
-
 .message.success {
     background-color: #d4edda;
     color: #155724;
     border: 1px solid #c3e6cb;
 }
-
 .message.error {
     background-color: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
+}
+@media (prefers-color-scheme: dark) {
+    body, .file-list-section, .upload-zone {
+        background: #23272e !important;
+        color: #e3e3e3;
+    }
+    .file-table, .file-table th, .file-table td {
+        background: #23272e !important;
+        color: #e3e3e3;
+        border-bottom: 1px solid #333;
+    }
+    .file-table th {
+        background: #1a1d22 !important;
+    }
+    .upload-zone {
+        border-color: #444;
+    }
+    .file-controls input[type="text"] {
+        background: #23272e;
+        color: #e3e3e3;
+        border: 1px solid #444;
+    }
 }
 </style>
 
@@ -348,7 +398,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = fileTableBody.insertRow();
             
             const nameCell = row.insertCell(0);
-            nameCell.textContent = file.name;
+            // 文件类型图标
+            const fname = (file.name || '').toString();
+            const ext = fname.split('.').pop().toLowerCase();
+            let icon = '📄';
+            if (ext === 'ipk') icon = '📦';
+            else if (ext === 'zip' || ext === 'tar' || ext === 'gz') icon = '🗜️';
+            else if (ext === 'txt' || ext === 'conf') icon = '📝';
+            else if (ext === 'json') icon = '🔢';
+            nameCell.innerHTML = `<span class="file-type-icon">${icon}</span>` + fname;
             
             const sizeCell = row.insertCell(1);
             sizeCell.textContent = formatFileSize(file.size);
@@ -365,12 +423,14 @@ document.addEventListener('DOMContentLoaded', function() {
             downloadBtn.href = '<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "download")%>?filename=' + encodeURIComponent(file.name);
             downloadBtn.className = 'btn btn-success';
             downloadBtn.innerHTML = '<i class="icon-download"></i> <%:Download%>';
+            downloadBtn.title = '<%:Download%>';
             actionsDiv.appendChild(downloadBtn);
             
             // 删除按钮
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn btn-danger';
             deleteBtn.innerHTML = '<i class="icon-trash"></i> <%:Delete%>';
+            deleteBtn.title = '<%:Delete%>';
             deleteBtn.onclick = function() {
                 deleteFile(file.name);
             };
@@ -381,6 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const installBtn = document.createElement('button');
                 installBtn.className = 'btn btn-primary';
                 installBtn.textContent = '<%:Install%>';
+                installBtn.title = '<%:Install%>';
                 installBtn.onclick = function() {
                     installPackage(file.name);
                 };
