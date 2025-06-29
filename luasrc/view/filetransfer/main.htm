@@ -12,22 +12,22 @@
         <div class="cbi-section-descr"><%:Upload and manage files through Web interface%></div>
     
     <!-- 文件上传区域 -->
-    <div class="upload-area" id="upload-area" style="max-width: 400px; margin: 0 auto;">
-        <div class="upload-zone" id="upload-zone" style="height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #aaa; border-radius: 10px; background: #fafbfc;">
-            <div class="upload-icon" style="font-size: 32px;">📁</div>
-            <p class="upload-title" style="font-size: 16px; margin: 8px 0 2px 0;"><%:Drag files here or click to upload%></p>
-            <p class="upload-hint" style="font-size: 12px; margin: 0 0 2px 0;"><%:Supported file types: ipk, tar, gz, zip, txt, conf, json%></p>
-            <p class="upload-hint" style="font-size: 12px; margin: 0 0 2px 0;"><%:Maximum file size: 50MB%></p>
+    <div class="upload-area" id="upload-area">
+        <div class="upload-zone" id="upload-zone">
+            <div class="upload-icon">📁</div>
+            <p class="upload-title"><%:Drag files here or click to upload%></p>
+            <p class="upload-hint"><%:Supported file types: ipk, tar, gz, zip, txt, conf, json%></p>
+            <p class="upload-hint"><%:Maximum file size: 50MB%></p>
             <input type="file" id="fileInput" multiple accept=".ipk,.tar,.gz,.zip,.txt,.conf,.json" style="display: none;" />
-            <button class="btn btn-primary upload-btn" onclick="document.getElementById('fileInput').click()" style="margin-top: 8px; padding: 6px 12px; font-size: 14px;">
+            <button class="btn btn-primary upload-btn" onclick="document.getElementById('fileInput').click()">
                 <i class="icon-upload"></i> <%:Upload%>
             </button>
         </div>
-        <div class="progress-container" id="progress-container" style="display: none; margin-top: 10px;">
-            <div class="progress-bar" style="width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden;">
-                <div class="progress-fill" id="progress-fill" style="height: 100%; background: #007cba; width: 0%; transition: width 0.3s;"></div>
+        <div class="progress-container" id="progress-container" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
             </div>
-            <span class="progress-text" id="progress-text" style="font-size: 12px; margin-left: 10px;">0%</span>
+            <span class="progress-text" id="progress-text">0%</span>
         </div>
     </div>
 

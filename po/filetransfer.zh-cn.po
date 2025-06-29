@@ -324,3 +324,96 @@ msgstr "查看文件传输系统的操作日志"
 # Descriptions
 msgid "Upload and manage files through Web interface"
 msgstr "通过Web界面上传和管理文件"
+
+msgid "Browse and manage system files"
+msgstr "浏览和管理系统文件"
+
+# File browser
+msgid "Root"
+msgstr "根目录"
+
+msgid "Home"
+msgstr "主目录"
+
+msgid "Go"
+msgstr "转到"
+
+msgid "Up"
+msgstr "上级"
+
+msgid "Parent Directory"
+msgstr "上级目录"
+
+msgid "Home Directory"
+msgstr "主目录"
+
+msgid "Root Directory"
+msgstr "根目录"
+
+msgid "Enter path..."
+msgstr "输入路径..."
+
+msgid "Show Hidden Files"
+msgstr "显示隐藏文件"
+
+msgid "Sort by Name"
+msgstr "按名称排序"
+
+msgid "Sort by Size"
+msgstr "按大小排序"
+
+msgid "Sort by Date"
+msgstr "按日期排序"
+
+msgid "Sort by Type"
+msgstr "按类型排序"
+
+msgid "New Folder"
+msgstr "新建文件夹"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "Modified"
+msgstr "修改时间"
+
+msgid "Permissions"
+msgstr "权限"
+
+msgid "Loading..."
+msgstr "加载中..."
+
+msgid "Open"
+msgstr "打开"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "No files found"
+msgstr "未找到文件"
+
+msgid "items"
+msgstr "项"
+
+msgid "selected"
+msgstr "已选择"
+
+msgid "Enter folder name"
+msgstr "输入文件夹名称"
+
+msgid "Are you sure you want to delete"
+msgstr "确定要删除"
+
+# Clear all files
+msgid "Clear All"
+msgstr "清空全部"
+
+msgid "Clear all files"
+msgstr "清空所有文件"
+
+msgid "Are you sure you want to delete all files?"
+msgstr "确定要删除所有文件吗？"
+
+# Additional log messages
+msgid "Total Entries"
+msgstr "总条目数"

@@ -173,6 +173,9 @@ function index()
     -- 错误日志相关
     entry({"admin", "system", "filetransfer", "log_error"}, call("action_log_error")).leaf = true
     
+    -- 文件浏览相关
+    entry({"admin", "system", "filetransfer", "browse_files"}, call("action_browse_files")).leaf = true
+    
     -- 调试API - 不需要认证
     entry({"filetransfer", "debug", "log_error"}, call("action_log_error")).leaf = true
 end
@@ -182,86 +185,88 @@ function action_upload()
     ensure_upload_dir()
     local http = require "luci.http"
     
-    -- 获取multipart表单数据
-    local form = http.formvalue()
-    local file = form.file
-    local filename = form.filename
-    
-    log_to_file("收到上传请求，filename="..tostring(filename)..", file类型="..type(file))
-    
-    -- 如果没有filename，尝试从file对象获取
-    if not filename and file and type(file) == "table" then
-        filename = file.filename
-        file = file.content
-    end
-    
-    -- 如果file是table类型，尝试获取其内容
-    if type(file) == "table" then
-        if file.filename then
-            filename = file.filename
-        end
-        if file.content then
-            file = file.content
-        elseif file.file then
-            file = file.file
-        else
-            -- 尝试获取table的第一个值
-            for k, v in pairs(file) do
-                if type(v) == "string" then
-                    file = v
-                    break
+    -- 设置正确的content-type处理
+    http.setfilehandler(
+        function(meta, chunk, eof)
+            -- 第一次调用时初始化
+            if not http.context.upload_file then
+                local filename = meta.name or meta.file
+                if not filename then
+                    log_to_file("上传文件名缺失")
+                    return
+                end
+                
+                filename = sanitize_filename(filename)
+                if not filename then
+                    log_to_file("文件名不合法: " .. tostring(meta.name or meta.file))
+                    return
+                end
+                
+                if not check_file_type(filename) then
+                    log_to_file("文件类型不允许: " .. filename)
+                    return
+                end
+                
+                local filepath = UPLOAD_DIR .. filename
+                local file_handle = io.open(filepath, "w+b")
+                if not file_handle then
+                    log_to_file("无法创建文件: " .. filepath)
+                    return
+                end
+                
+                http.context.upload_file = {
+                    handle = file_handle,
+                    filename = filename,
+                    filepath = filepath,
+                    size = 0
+                }
+                
+                log_to_file("开始上传文件: " .. filename)
+            end
+            
+            -- 写入文件内容
+            if chunk and http.context.upload_file then
+                http.context.upload_file.handle:write(chunk)
+                http.context.upload_file.size = http.context.upload_file.size + #chunk
+                
+                -- 检查文件大小
+                if http.context.upload_file.size > MAX_FILE_SIZE then
+                    http.context.upload_file.handle:close()
+                    fs.unlink(http.context.upload_file.filepath)
+                    log_to_file("文件过大，上传终止: " .. http.context.upload_file.filename)
+                    http.context.upload_file = nil
+                    return
                 end
             end
+            
+            -- 上传完成
+            if eof and http.context.upload_file then
+                http.context.upload_file.handle:close()
+                log_to_file("文件上传完成: " .. http.context.upload_file.filename .. ", 大小: " .. http.context.upload_file.size)
+            end
         end
-    end
+    )
     
-    if not file or not filename then
-        log_to_file("上传参数缺失")
-        http.status(400, "Bad Request")
-        return
-    end
+    -- 获取表单数据
+    local form_data = http.formvalue()
     
-    filename = sanitize_filename(filename)
-    if not filename then
-        log_to_file("sanitize_filename失败")
-        http.status(400, "Invalid filename")
-        return
-    end
-    
-    if not check_file_type(filename) then
-        log_to_file("文件类型不允许:"..filename)
-        http.status(400, "File type not allowed")
-        return
-    end
-    
-    local file_size = 0
-    if type(file) == "string" then
-        file_size = #file
-    else
-        log_to_file("file不是字符串类型")
-        http.status(400, "Invalid file format")
-        return
-    end
-    
-    if not check_file_size(file_size) then
-        log_to_file("文件过大:"..file_size)
-        http.status(413, "File too large")
-        return
-    end
-    
-    local f = io.open(UPLOAD_DIR .. filename, "w+b")
-    if f then
-        f:write(file)
-        f:close()
-        log_to_file("文件上传成功:" .. filename .. ", 大小:"..file_size)
+    -- 检查是否有上传的文件
+    if http.context.upload_file then
+        local upload_info = http.context.upload_file
         if json then
-            http.write_json({status = "success", path = UPLOAD_DIR .. filename})
+            http.write_json({
+                status = "success", 
+                filename = upload_info.filename,
+                path = upload_info.filepath,
+                size = upload_info.size
+            })
         else
-            http.write('{"status": "success", "path": "' .. UPLOAD_DIR .. filename .. '"}')
+            http.write(string.format('{"status": "success", "filename": "%s", "path": "%s", "size": %d}',
+                upload_info.filename, upload_info.filepath, upload_info.size))
         end
     else
-        log_to_file("文件保存失败:"..filename)
-        http.status(500, "Failed to save file")
+        log_to_file("没有接收到文件上传数据")
+        http.status(400, "No file uploaded")
     end
 end
 
@@ -617,6 +622,129 @@ function action_preview()
         end
     else
         http.status(500, "Failed to read file")
+    end
+end
+
+-- 文件浏览处理函数
+function action_browse_files()
+    local path = http.formvalue("path") or "/"
+    local show_hidden = http.formvalue("show_hidden") == "true"
+    local sort_by = http.formvalue("sort_by") or "name"
+    
+    -- 安全检查路径
+    if not path:match("^/") then
+        path = "/" .. path
+    end
+    
+    -- 防止路径遍历攻击
+    path = path:gsub("%.%./", "")
+    
+    local files = {}
+    
+    -- 使用ls命令获取文件列表
+    local cmd = string.format("ls -la '%s' 2>/dev/null", path:gsub("'", "'\"'\"'"))
+    local handle = io.popen(cmd)
+    
+    if handle then
+        local first_line = true
+        for line in handle:lines() do
+            if not first_line then  -- 跳过第一行 "total xxx"
+                local parts = {}
+                for part in line:gmatch("%S+") do
+                    table.insert(parts, part)
+                end
+                
+                if #parts >= 9 then
+                    local permissions = parts[1]
+                    local size = tonumber(parts[5]) or 0
+                    local month = parts[6]
+                    local day = parts[7]
+                    local time = parts[8]
+                    local name = table.concat(parts, " ", 9)
+                    
+                    -- 跳过当前目录项
+                    if name ~= "." then
+                        local is_directory = permissions:sub(1,1) == "d"
+                        local is_hidden = name:sub(1,1) == "."
+                        
+                        -- 根据设置决定是否显示隐藏文件
+                        if show_hidden or not is_hidden or name == ".." then
+                            local file_path = path
+                            if path:sub(-1) ~= "/" then
+                                file_path = file_path .. "/"
+                            end
+                            file_path = file_path .. name
+                            
+                            table.insert(files, {
+                                name = name,
+                                type = is_directory and "directory" or "file",
+                                size = size,
+                                permissions = permissions,
+                                path = file_path,
+                                modified = string.format("%s %s %s", month, day, time),
+                                hidden = is_hidden
+                            })
+                        end
+                    end
+                end
+            else
+                first_line = false
+            end
+        end
+        handle:close()
+    end
+    
+    -- 排序文件
+    if sort_by == "name" then
+        table.sort(files, function(a, b)
+            -- 目录优先
+            if a.type ~= b.type then
+                return a.type == "directory"
+            end
+            return a.name:lower() < b.name:lower()
+        end)
+    elseif sort_by == "size" then
+        table.sort(files, function(a, b)
+            if a.type ~= b.type then
+                return a.type == "directory"
+            end
+            return a.size > b.size
+        end)
+    elseif sort_by == "date" then
+        table.sort(files, function(a, b)
+            if a.type ~= b.type then
+                return a.type == "directory"
+            end
+            return a.modified > b.modified
+        end)
+    end
+    
+    log_to_file("浏览文件夹: " .. path .. " (找到 " .. #files .. " 个项目)")
+    
+    if json then
+        http.write_json({
+            status = "success",
+            path = path,
+            files = files,
+            count = #files
+        })
+    else
+        local json_str = '{"status": "success", "path": "' .. path .. '", "files": ['
+        for i, file in ipairs(files) do
+            if i > 1 then json_str = json_str .. ',' end
+            json_str = json_str .. string.format(
+                '{"name": "%s", "type": "%s", "size": %d, "permissions": "%s", "path": "%s", "modified": "%s", "hidden": %s}',
+                file.name:gsub('"', '\\"'),
+                file.type,
+                file.size,
+                file.permissions,
+                file.path:gsub('"', '\\"'),
+                file.modified,
+                file.hidden and "true" or "false"
+            )
+        end
+        json_str = json_str .. '], "count": ' .. #files .. '}'
+        http.write(json_str)
     end
 end
 
