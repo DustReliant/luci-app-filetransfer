@@ -517,7 +517,6 @@ function navigateTo(path) {
 
 // 导航到文件夹（专门用于点击文件夹）
 function navigateToFolder(path) {
-    console.log('Navigating to folder:', path);
     navigateTo(path);
 }
 
@@ -591,7 +590,7 @@ function refreshFiles() {
                 })
                 .catch(error => {
         loading.style.display = 'none';
-        console.error('Error loading files:', error);
+        // Error loading files
         showMessage('Failed to load files', 'error');
         // 显示示例文件列表作为fallback
         displaySampleFiles();
@@ -734,16 +733,15 @@ function sortFiles() {
     refreshFiles();
 }
 
-// 显示消息
+// 显示消息  
 function showMessage(message, type) {
-    console.log(`${type}: ${message}`);
+    // 可以在这里添加UI消息显示逻辑
 }
 
 // 文件操作函数
 function createFolder() {
     const name = prompt('<%:Enter folder name%>:');
     if (name) {
-        console.log('Create folder:', name);
         showMessage('Folder creation not implemented yet', 'warning');
     }
 }
@@ -753,18 +751,15 @@ function uploadFile() {
 }
 
 function downloadFile(filename) {
-    console.log('Download file:', filename);
     showMessage('File download not implemented yet', 'warning');
 }
 
 function editFile(filename) {
-    console.log('Edit file:', filename);
     showMessage('File editing not implemented yet', 'warning');
 }
 
 function deleteFile(filename, isFolder) {
     if (confirm(`<%:Are you sure you want to delete%> "${filename}"?`)) {
-        console.log('Delete file:', filename, 'isFolder:', isFolder);
         showMessage('File deletion not implemented yet', 'warning');
     }
 }

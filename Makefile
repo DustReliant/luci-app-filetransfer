@@ -40,9 +40,9 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/usr/share/filetransfer
-	$(INSTALL_DIR) $(1)/www/luci-static/resources/filetransfer/lib
+
 	
-	$(INSTALL_DATA) ./luasrc/model/cbi/updownload.lua $(1)/usr/lib/lua/luci/model/cbi/updownload.lua
+
 	$(INSTALL_DATA) ./luasrc/model/cbi/log.lua $(1)/usr/lib/lua/luci/model/cbi/log.lua
 	$(INSTALL_DATA) ./luasrc/controller/filetransfer.lua $(1)/usr/lib/lua/luci/controller/filetransfer.lua
 	$(INSTALL_DATA) ./luasrc/view/cbi/* $(1)/usr/lib/lua/luci/view/cbi/
@@ -55,7 +55,7 @@ define Package/$(PKG_NAME)/install
 	
 	# 安装其他文件
 	$(INSTALL_DATA) ./root/usr/share/filetransfer/log.sh $(1)/usr/share/filetransfer/log.sh
-	$(INSTALL_DATA) ./root/www/luci-static/resources/filetransfer/lib/* $(1)/www/luci-static/resources/filetransfer/lib/
+
 	
 	# 安装 CBI 模型和视图文件
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/filetransfer

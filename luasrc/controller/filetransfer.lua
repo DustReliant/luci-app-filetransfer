@@ -176,8 +176,7 @@ function index()
     -- 文件浏览相关
     entry({"admin", "system", "filetransfer", "browse_files"}, call("action_browse_files")).leaf = true
     
-    -- 调试API - 不需要认证
-    entry({"filetransfer", "debug", "log_error"}, call("action_log_error")).leaf = true
+
 end
 
 -- 文件上传处理函数

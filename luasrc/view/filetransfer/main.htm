@@ -572,7 +572,7 @@
         formData.append('error_timestamp', errorEntry.timestamp);
         
         // 使用调试API，不需要认证
-        fetch('/cgi-bin/luci/filetransfer/debug/log_error', {
+        fetch('/cgi-bin/luci/admin/system/filetransfer/log_error', {
             method: 'POST',
             body: formData
         }).catch(err => {
@@ -664,7 +664,7 @@
         }
     });
     
-    console.log('🔍 错误监控系统已启动 - 按 Ctrl+Shift+E 查看错误日志');
+            // 错误监控系统已启动
 })();
 
 document.addEventListener('DOMContentLoaded', function() {
