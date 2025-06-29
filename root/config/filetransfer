@@ -1,7 +1,0 @@
-config filetransfer 'config'
-    option log_level '0'                # 日志级别，0 为默认日志级别
-    option log_size '1024'               # 日志文件大小限制，单位为 KB
-    option clog ''                       # 用于存储日志内容的选项，默认为空
-    option enable_log '1'                # 是否启用日志，1 为启用，0 为禁用
-
-# 其他可能的配置项根据需要添加

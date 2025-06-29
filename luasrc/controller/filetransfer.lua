@@ -143,7 +143,7 @@ function index()
     entry({"admin", "system", "filetransfer", "log"}, template("filetransfer/log"), _("操作日志"), 3)
     
     -- 设置页面
-    entry({"admin", "system", "filetransfer", "settings"}, cbi("filetransfer/settings"), _("设置"), 4)
+    entry({"admin", "system", "filetransfer", "settings"}, cbi("filetransfer"), _("设置"), 4)
 
     -- API 接口
     -- 文件上传相关

@@ -35,7 +35,7 @@ endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/cbi
+
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/etc/config
@@ -43,9 +43,9 @@ define Package/$(PKG_NAME)/install
 
 	
 
-	$(INSTALL_DATA) ./luasrc/model/cbi/log.lua $(1)/usr/lib/lua/luci/model/cbi/log.lua
+	$(INSTALL_DATA) ./luasrc/model/cbi/filetransfer.lua $(1)/usr/lib/lua/luci/model/cbi/filetransfer.lua
 	$(INSTALL_DATA) ./luasrc/controller/filetransfer.lua $(1)/usr/lib/lua/luci/controller/filetransfer.lua
-	$(INSTALL_DATA) ./luasrc/view/cbi/* $(1)/usr/lib/lua/luci/view/cbi/
+
 	
 	# 安装 init.d 脚本并设置执行权限
 	$(INSTALL_BIN) ./root/etc/init.d/filetransfer $(1)/etc/init.d/filetransfer
@@ -57,10 +57,8 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./root/usr/share/filetransfer/log.sh $(1)/usr/share/filetransfer/log.sh
 
 	
-	# 安装 CBI 模型和视图文件
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/filetransfer
+	# 安装视图文件
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/filetransfer
-	$(INSTALL_DATA) ./luasrc/model/cbi/filetransfer/* $(1)/usr/lib/lua/luci/model/cbi/filetransfer/
 	$(INSTALL_DATA) ./luasrc/view/filetransfer/* $(1)/usr/lib/lua/luci/view/filetransfer/
 endef
 
