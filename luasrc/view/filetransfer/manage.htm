@@ -342,6 +342,13 @@
     background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
 }
 
+.file-item.folder:hover {
+    background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+    transform: translateX(3px);
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.1);
+}
+
 .file-item.hidden {
     opacity: 0.6;
 }
@@ -496,10 +503,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 导航到指定路径
 function navigateTo(path) {
+    // 规范化路径
+    path = path.replace(/\/+/g, '/'); // 移除多余的斜杠
+    if (path !== '/' && path.endsWith('/')) {
+        path = path.slice(0, -1); // 移除末尾斜杠
+    }
+    
     currentPath = path;
     document.getElementById('current-path').value = path;
     updateBreadcrumb();
     refreshFiles();
+}
+
+// 导航到文件夹（专门用于点击文件夹）
+function navigateToFolder(path) {
+    console.log('Navigating to folder:', path);
+    navigateTo(path);
 }
 
 // 从地址栏导航
@@ -533,17 +552,20 @@ function updateBreadcrumb() {
     const breadcrumb = document.getElementById('breadcrumb-nav');
     const parts = currentPath.split('/').filter(p => p);
     
-    let html = '<span class="breadcrumb-item" onclick="navigateTo(\'/\')">Root</span>';
+    let html = `<span class="breadcrumb-item ${currentPath === '/' ? 'active' : ''}" onclick="navigateTo('/')"><%:Root%></span>`;
     let currentBuildPath = '';
     
     parts.forEach((part, index) => {
         currentBuildPath += '/' + part;
         const isLast = index === parts.length - 1;
-        html += '<span class="breadcrumb-separator">/</span>';
+        html += '<span class="breadcrumb-separator"> / </span>';
         html += `<span class="breadcrumb-item ${isLast ? 'active' : ''}" onclick="navigateTo('${currentBuildPath}')">${part}</span>`;
     });
     
     breadcrumb.innerHTML = html;
+    
+    // 同时更新地址栏
+    document.getElementById('current-path').value = currentPath;
 }
 
 // 刷新文件列表
@@ -643,11 +665,13 @@ function displayFiles(files) {
         const iconClass = getFileIcon(file);
         const sizeDisplay = isFolder ? '-' : formatFileSize(file.size);
         
+        const targetPath = file.path || (currentPath === '/' ? '/' + file.name : currentPath + '/' + file.name);
+        
         html += `
             <div class="file-item ${isFolder ? 'folder' : ''} ${file.hidden ? 'hidden' : ''}" 
-                 ondblclick="${isFolder ? `navigateTo('${file.path || currentPath + '/' + file.name}')` : `downloadFile('${file.name}')`}">
+                 ${isFolder ? `onclick="navigateToFolder('${targetPath}')" style="cursor: pointer;"` : ''}>
                 <div class="file-name">
-                    <i class="file-icon ${iconClass}">📁</i>
+                    <i class="file-icon ${iconClass}">${isFolder ? '📁' : '📄'}</i>
                     <span>${file.name}</span>
                 </div>
                 <div class="file-size">${sizeDisplay}</div>
@@ -655,7 +679,7 @@ function displayFiles(files) {
                 <div class="file-permissions">${file.permissions}</div>
                 <div class="file-actions">
                     ${isFolder ? 
-                        `<button class="btn btn-sm btn-primary" onclick="navigateTo('${file.path || currentPath + '/' + file.name}')"><%:Open%></button>` :
+                        `<button class="btn btn-sm btn-primary" onclick="navigateToFolder('${targetPath}')"><%:Open%></button>` :
                         `<button class="btn btn-sm btn-success" onclick="downloadFile('${file.name}')"><%:Download%></button>
                          <button class="btn btn-sm btn-warning" onclick="editFile('${file.name}')"><%:Edit%></button>`
                     }

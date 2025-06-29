@@ -102,7 +102,7 @@
 .upload-zone {
     border: 3px dashed #667eea;
     border-radius: 20px;
-    padding: 60px 40px;
+    padding: 30px 40px;
     text-align: center;
     background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -110,7 +110,7 @@
     box-shadow: 0 10px 30px rgba(102, 126, 234, 0.1);
     position: relative;
     width: 100%;
-    max-width: 600px;
+    max-width: 500px;
 }
 
 .upload-zone:hover,
@@ -118,39 +118,39 @@
     border-color: #764ba2;
     background: linear-gradient(135deg, #e8f2ff 0%, #f8f9ff 100%);
     box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
-    transform: translateY(-5px);
+    transform: translateY(-3px);
 }
 
 .upload-icon {
-    font-size: 80px;
-    margin-bottom: 20px;
+    font-size: 48px;
+    margin-bottom: 15px;
     color: #667eea;
     animation: float 3s ease-in-out infinite;
 }
 
 @keyframes float {
     0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
+    50% { transform: translateY(-8px); }
 }
 
 .upload-title {
-    font-size: 24px;
+    font-size: 18px;
     font-weight: 600;
     color: #333;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 }
 
 .upload-hint {
-    font-size: 14px;
+    font-size: 12px;
     color: #888;
-    margin: 8px 0;
-    line-height: 1.5;
+    margin: 5px 0;
+    line-height: 1.4;
 }
 
 .upload-btn {
-    margin-top: 20px;
-    padding: 15px 30px;
-    font-size: 16px;
+    margin-top: 15px;
+    padding: 12px 24px;
+    font-size: 14px;
     font-weight: 600;
     border-radius: 50px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -811,11 +811,11 @@ document.addEventListener('DOMContentLoaded', function() {
             actionsDiv.appendChild(deleteBtn);
             
             // IPK 安装按钮
-            if (file.name.endsWith('.ipk')) {
+            if (file.name && file.name.toLowerCase().endsWith('.ipk')) {
                 const installBtn = document.createElement('button');
-                installBtn.className = 'btn btn-primary';
-                installBtn.innerHTML = '<i class="icon-download"></i> <%:Install%>';
-                installBtn.title = '<%:Install%>';
+                installBtn.className = 'btn btn-warning';
+                installBtn.innerHTML = '<i class="icon-cog"></i> <%:Install%>';
+                installBtn.title = '<%:Install IPK Package%>';
                 installBtn.onclick = function() {
                     installPackage(file.name);
                 };
