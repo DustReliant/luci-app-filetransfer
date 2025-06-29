@@ -7,8 +7,8 @@
 
 <div class="cbi-map">
     <h2 name="content"><%:File Management%></h2>
-    
-    <div class="cbi-section">
+
+<div class="cbi-section">
         <div class="cbi-section-descr"><%:Browse and manage system files%></div>
         
         <!-- 地址栏 -->
@@ -32,11 +32,11 @@
                 </button>
             </div>
         </div>
-        
+
         <!-- 面包屑导航 -->
         <div class="breadcrumb-nav" id="breadcrumb-nav">
             <span class="breadcrumb-item" onclick="navigateTo('/')"><%:Root%></span>
-        </div>
+                </div>
         
         <!-- 文件操作控制栏 -->
         <div class="file-controls">
@@ -50,7 +50,7 @@
                 <button class="btn btn-success" onclick="uploadFile()">
                     <i class="icon-upload"></i> <%:Upload%>
                 </button>
-            </div>
+                </div>
             
             <div class="view-controls">
                 <label for="show-hidden">
@@ -64,7 +64,7 @@
                 </select>
             </div>
         </div>
-        
+
         <!-- 文件列表容器 -->
         <div class="file-browser">
             <div class="file-list-header">
@@ -73,21 +73,21 @@
                 <div class="header-item"><%:Modified%></div>
                 <div class="header-item"><%:Permissions%></div>
                 <div class="header-item"><%:Actions%></div>
-            </div>
+                    </div>
             
             <div class="file-list" id="file-list">
                 <div class="loading-indicator" id="loading">
                     <i class="icon-spinner"></i> <%:Loading...%>
                 </div>
             </div>
-        </div>
+            </div>
         
         <!-- 状态栏 -->
         <div class="status-bar">
             <span id="file-count">0 <%:items%></span>
             <span id="selected-count" style="display: none;">0 <%:selected%></span>
-        </div>
     </div>
+</div>
 </div>
 
 <style>
@@ -577,19 +577,19 @@ function refreshFiles() {
     
     // 发送请求获取文件列表
     fetch('/cgi-bin/luci/admin/system/filetransfer/browse_files', {
-        method: 'POST',
+                    method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: `path=${encodeURIComponent(currentPath)}&show_hidden=${showHidden}&sort_by=${sortBy}`
-    })
-    .then(response => response.json())
-    .then(data => {
+                })
+                .then(response => response.json())
+                .then(data => {
         loading.style.display = 'none';
         displayFiles(data.files || []);
         updateFileCount(data.files ? data.files.length : 0);
-    })
-    .catch(error => {
+                })
+                .catch(error => {
         loading.style.display = 'none';
         console.error('Error loading files:', error);
         showMessage('Failed to load files', 'error');
@@ -656,9 +656,9 @@ function displayFiles(files) {
     
     if (files.length === 0) {
         fileList.innerHTML = '<div class="no-files" style="text-align: center; padding: 40px; color: #999;"><%:No files found%></div>';
-        return;
-    }
-    
+            return;
+        }
+
     let html = '';
     files.forEach(file => {
         const isFolder = file.type === 'directory';
@@ -706,14 +706,14 @@ function getFileIcon(file) {
     if (executableExts.includes(ext)) return 'executable';
     
     return 'file';
-}
+    }
 
-// 格式化文件大小
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 

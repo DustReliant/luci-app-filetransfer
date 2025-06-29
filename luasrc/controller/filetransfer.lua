@@ -183,90 +183,110 @@ end
 -- 文件上传处理函数
 function action_upload()
     ensure_upload_dir()
-    local http = require "luci.http"
     
-    -- 设置正确的content-type处理
-    http.setfilehandler(
-        function(meta, chunk, eof)
-            -- 第一次调用时初始化
-            if not http.context.upload_file then
-                local filename = meta.name or meta.file
-                if not filename then
-                    log_to_file("上传文件名缺失")
-                    return
-                end
-                
-                filename = sanitize_filename(filename)
-                if not filename then
-                    log_to_file("文件名不合法: " .. tostring(meta.name or meta.file))
-                    return
-                end
-                
-                if not check_file_type(filename) then
-                    log_to_file("文件类型不允许: " .. filename)
-                    return
-                end
-                
-                local filepath = UPLOAD_DIR .. filename
-                local file_handle = io.open(filepath, "w+b")
-                if not file_handle then
-                    log_to_file("无法创建文件: " .. filepath)
-                    return
-                end
-                
-                http.context.upload_file = {
-                    handle = file_handle,
-                    filename = filename,
-                    filepath = filepath,
-                    size = 0
-                }
-                
-                log_to_file("开始上传文件: " .. filename)
-            end
-            
-            -- 写入文件内容
-            if chunk and http.context.upload_file then
-                http.context.upload_file.handle:write(chunk)
-                http.context.upload_file.size = http.context.upload_file.size + #chunk
-                
-                -- 检查文件大小
-                if http.context.upload_file.size > MAX_FILE_SIZE then
-                    http.context.upload_file.handle:close()
-                    fs.unlink(http.context.upload_file.filepath)
-                    log_to_file("文件过大，上传终止: " .. http.context.upload_file.filename)
-                    http.context.upload_file = nil
-                    return
-                end
-            end
-            
-            -- 上传完成
-            if eof and http.context.upload_file then
-                http.context.upload_file.handle:close()
-                log_to_file("文件上传完成: " .. http.context.upload_file.filename .. ", 大小: " .. http.context.upload_file.size)
-            end
-        end
-    )
+    -- 获取上传的文件
+    local file = http.formvalue("file")
+    local filename = http.formvalue("filename")
     
-    -- 获取表单数据
-    local form_data = http.formvalue()
+    log_to_file("收到上传请求，文件参数类型: " .. type(file))
     
-    -- 检查是否有上传的文件
-    if http.context.upload_file then
-        local upload_info = http.context.upload_file
-        if json then
-            http.write_json({
-                status = "success", 
-                filename = upload_info.filename,
-                path = upload_info.filepath,
-                size = upload_info.size
-            })
-        else
-            http.write(string.format('{"status": "success", "filename": "%s", "path": "%s", "size": %d}',
-                upload_info.filename, upload_info.filepath, upload_info.size))
-        end
-    else
-        log_to_file("没有接收到文件上传数据")
+    if not file then
+        log_to_file("没有接收到文件数据")
         http.status(400, "No file uploaded")
+        return
+    end
+    
+    -- 处理文件对象
+    local file_content = nil
+    local file_name = filename
+    
+    if type(file) == "table" then
+        -- 处理table类型的文件对象
+        if file.content then
+            file_content = file.content
+        elseif file.data then
+            file_content = file.data
+        else
+            -- 尝试直接使用file作为内容
+            file_content = tostring(file)
+        end
+        
+        -- 获取文件名
+        if not file_name and file.filename then
+            file_name = file.filename
+        elseif not file_name and file.name then
+            file_name = file.name
+        end
+        
+        log_to_file("处理table类型文件，文件名: " .. tostring(file_name) .. ", 内容长度: " .. tostring(file_content and #file_content or 0))
+    elseif type(file) == "string" then
+        file_content = file
+        log_to_file("处理string类型文件，内容长度: " .. #file_content)
+    else
+        log_to_file("未知的文件类型: " .. type(file))
+        http.status(400, "Invalid file format")
+        return
+    end
+    
+    if not file_content or #file_content == 0 then
+        log_to_file("文件内容为空")
+        http.status(400, "Empty file")
+        return
+    end
+    
+    if not file_name then
+        log_to_file("文件名缺失")
+        http.status(400, "Filename missing")
+        return
+    end
+    
+    -- 清理文件名
+    file_name = sanitize_filename(file_name)
+    if not file_name then
+        log_to_file("文件名不合法")
+        http.status(400, "Invalid filename")
+        return
+    end
+    
+    -- 检查文件类型
+    if not check_file_type(file_name) then
+        log_to_file("文件类型不允许: " .. file_name)
+        http.status(400, "File type not allowed")
+        return
+    end
+    
+    -- 检查文件大小
+    if not check_file_size(#file_content) then
+        log_to_file("文件过大: " .. file_name .. ", 大小: " .. #file_content)
+        http.status(400, "File too large")
+        return
+    end
+    
+    -- 保存文件
+    local filepath = UPLOAD_DIR .. file_name
+    local f = io.open(filepath, "w+b")
+    if not f then
+        log_to_file("无法创建文件: " .. filepath)
+        http.status(500, "Failed to create file")
+        return
+    end
+    
+    f:write(file_content)
+    f:close()
+    
+    log_to_file("文件上传成功: " .. file_name .. ", 大小: " .. #file_content .. ", 路径: " .. filepath)
+    
+    -- 返回成功响应
+    if json then
+        http.write_json({
+            status = "success", 
+            filename = file_name,
+            path = filepath,
+            size = #file_content
+        })
+    else
+        http.write(string.format('{"status": "success", "filename": "%s", "path": "%s", "size": %d}',
+            file_name, filepath, #file_content))
     end
 end
 
