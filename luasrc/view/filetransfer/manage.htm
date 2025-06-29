@@ -8,330 +8,120 @@
 <div class="cbi-map">
     <h2 name="content"><%:File Management%></h2>
 
-<div class="cbi-section">
+    <div class="cbi-section">
         <div class="cbi-section-descr"><%:Browse and manage system files%></div>
         
-        <!-- 地址栏 -->
-        <div class="address-bar">
-            <div class="address-input-container">
-                <i class="icon-folder"></i>
-                <input type="text" id="current-path" value="/" placeholder="<%:Enter path...%>" class="address-input">
-                <button class="btn btn-primary address-go" onclick="navigateToPath()">
-                    <i class="icon-arrow-right"></i> <%:Go%>
-                </button>
-            </div>
-            <div class="path-buttons">
-                <button class="btn btn-secondary" onclick="navigateUp()" title="<%:Parent Directory%>">
-                    <i class="icon-arrow-up"></i> <%:Up%>
-                </button>
-                <button class="btn btn-secondary" onclick="navigateHome()" title="<%:Home Directory%>">
-                    <i class="icon-home"></i> <%:Home%>
-                </button>
-                <button class="btn btn-secondary" onclick="navigateRoot()" title="<%:Root Directory%>">
-                    <i class="icon-folder"></i> <%:Root%>
-                </button>
-            </div>
+        <!-- 简洁的地址栏 -->
+        <div class="path-bar">
+            <input type="text" id="current-path" value="/" placeholder="<%:Enter path...%>" class="path-input">
+            <button class="btn btn-primary" onclick="navigateToPath()"><%:Go%></button>
+            <button class="btn btn-secondary" onclick="refreshFiles()"><%:Refresh%></button>
         </div>
 
-        <!-- 面包屑导航 -->
-        <div class="breadcrumb-nav" id="breadcrumb-nav">
-            <span class="breadcrumb-item" onclick="navigateTo('/')"><%:Root%></span>
-                </div>
-        
-        <!-- 文件操作控制栏 -->
-        <div class="file-controls">
-            <div class="control-group">
-                <button class="btn btn-primary" onclick="refreshFiles()">
-                    <i class="icon-refresh"></i> <%:Refresh%>
-                </button>
-                <button class="btn btn-secondary" onclick="createFolder()">
-                    <i class="icon-folder-plus"></i> <%:New Folder%>
-                </button>
-                <button class="btn btn-success" onclick="uploadFile()">
-                    <i class="icon-upload"></i> <%:Upload%>
-                </button>
-                </div>
-            
-            <div class="view-controls">
-                <label for="show-hidden">
-                    <input type="checkbox" id="show-hidden" onchange="toggleHiddenFiles()"> <%:Show Hidden Files%>
-                </label>
-                <select id="sort-by" onchange="sortFiles()" class="sort-select">
-                    <option value="name"><%:Sort by Name%></option>
-                    <option value="size"><%:Sort by Size%></option>
-                    <option value="date"><%:Sort by Date%></option>
-                    <option value="type"><%:Sort by Type%></option>
-                </select>
-            </div>
-        </div>
-
-        <!-- 文件列表容器 -->
+        <!-- 简洁的文件列表 -->
         <div class="file-browser">
-            <div class="file-list-header">
-                <div class="header-item"><%:Name%></div>
-                <div class="header-item"><%:Size%></div>
-                <div class="header-item"><%:Modified%></div>
-                <div class="header-item"><%:Permissions%></div>
-                <div class="header-item"><%:Actions%></div>
-                    </div>
-            
             <div class="file-list" id="file-list">
-                <div class="loading-indicator" id="loading">
-                    <i class="icon-spinner"></i> <%:Loading...%>
-                </div>
+                <div class="loading" id="loading"><%:Loading...%></div>
             </div>
-            </div>
+        </div>
         
         <!-- 状态栏 -->
         <div class="status-bar">
             <span id="file-count">0 <%:items%></span>
-            <span id="selected-count" style="display: none;">0 <%:selected%></span>
+        </div>
     </div>
-</div>
 </div>
 
 <style>
 .cbi-map {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #f5f5f5;
     min-height: 100vh;
     padding: 20px;
 }
 
 .cbi-section {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 30px;
-    margin-bottom: 30px;
-}
-
-/* 地址栏样式 */
-.address-bar {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-.address-input-container {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    min-width: 300px;
     background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 12px;
-    padding: 8px 12px;
-    transition: all 0.3s ease;
-}
-
-.address-input-container:focus-within {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.address-input-container i {
-    color: #667eea;
-    margin-right: 10px;
-    font-size: 16px;
-}
-
-.address-input {
-    flex: 1;
-    border: none;
-    outline: none;
-    font-size: 14px;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    background: transparent;
-}
-
-.address-go {
-    margin-left: 10px;
-    padding: 6px 12px;
-    font-size: 12px;
-}
-
-.path-buttons {
-    display: flex;
-    gap: 8px;
-}
-
-/* 面包屑导航 */
-.breadcrumb-nav {
-    background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
-    padding: 12px 16px;
-    border-radius: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
     margin-bottom: 20px;
-    font-size: 14px;
-    overflow-x: auto;
-    white-space: nowrap;
 }
 
-.breadcrumb-item {
-    color: #667eea;
+.cbi-section-descr {
+    color: #666;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* 地址栏 */
+.path-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.path-input {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.path-input:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
+    font-weight: bold;
+    text-decoration: none;
     display: inline-block;
 }
 
-.breadcrumb-item:hover {
-    background: rgba(102, 126, 234, 0.1);
-    color: #764ba2;
-}
-
-.breadcrumb-item.active {
-    color: #333;
-    font-weight: 600;
-    background: rgba(102, 126, 234, 0.15);
-}
-
-.breadcrumb-separator {
-    margin: 0 4px;
-    color: #999;
-}
-
-/* 文件控制栏 */
-.file-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 15px;
-    padding: 15px;
-    background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
-    border-radius: 12px;
-}
-
-.control-group {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.view-controls {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.view-controls label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 14px;
-    color: #333;
-    cursor: pointer;
-}
-
-.sort-select {
-    padding: 6px 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    background: white;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-/* 按钮样式 */
-.btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    color: white;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-}
-
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #007bff;
+    color: white;
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-}
-
-.btn-success {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-}
-
-.btn-warning {
-    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-    color: #333;
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    background: #6c757d;
+    color: white;
 }
 
 .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
-
-.btn-sm {
-    padding: 4px 8px;
-    font-size: 11px;
+    opacity: 0.9;
 }
 
 /* 文件浏览器 */
 .file-browser {
-    border: 2px solid #e0e0e0;
-    border-radius: 15px;
-    overflow: hidden;
+    border: 1px solid #ddd;
+    border-radius: 5px;
     background: white;
-}
-
-.file-list-header {
-    display: grid;
-    grid-template-columns: 2fr 100px 150px 120px 200px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #333;
-}
-
-.header-item {
-    padding: 15px 12px;
-    border-right: 1px solid #dee2e6;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.header-item:last-child {
-    border-right: none;
+    min-height: 400px;
 }
 
 .file-list {
-    max-height: 500px;
-    overflow-y: auto;
+    padding: 0;
 }
 
 .file-item {
-    display: grid;
-    grid-template-columns: 2fr 100px 150px 120px 200px;
+    display: flex;
     align-items: center;
-    padding: 10px 12px;
-    border-bottom: 1px solid #f1f3f4;
-    transition: all 0.3s ease;
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
     cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .file-item:hover {
-    background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+    background: #f8f9fa;
 }
 
 .file-item:last-child {
@@ -339,153 +129,95 @@
 }
 
 .file-item.folder {
-    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    background: #fff9e6;
 }
 
 .file-item.folder:hover {
-    background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
-    transform: translateX(3px);
-    border-radius: 8px;
-    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.1);
+    background: #e6f3ff;
 }
 
-.file-item.hidden {
-    opacity: 0.6;
+.file-icon {
+    font-size: 20px;
+    margin-right: 12px;
+    width: 24px;
+    text-align: center;
 }
 
 .file-name {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    flex: 1;
     font-weight: 500;
     color: #333;
 }
 
-.file-icon {
-    font-size: 18px;
-    width: 20px;
-    text-align: center;
-}
-
-.file-icon.folder {
-    color: #ffc107;
-}
-
-.file-icon.file {
-    color: #667eea;
-}
-
-.file-icon.executable {
-    color: #28a745;
-}
-
-.file-icon.image {
-    color: #fd7e14;
-}
-
-.file-icon.archive {
-    color: #6f42c1;
-}
-
-.file-size,
-.file-date,
-.file-permissions {
-    font-size: 12px;
+.file-info {
+    display: flex;
+    gap: 20px;
     color: #666;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.file-size {
+    min-width: 80px;
+    text-align: right;
+}
+
+.file-date {
+    min-width: 120px;
 }
 
 .file-actions {
     display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
+    gap: 5px;
 }
 
-.loading-indicator {
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.loading {
     text-align: center;
     padding: 40px;
-    color: #667eea;
-    font-size: 16px;
-}
-
-.loading-indicator i {
-    animation: spin 1s linear infinite;
-    margin-right: 8px;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* 状态栏 */
-.status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
-    border-radius: 12px;
-    margin-top: 15px;
-    font-size: 12px;
     color: #666;
 }
 
-/* 滚动条样式 */
-.file-list::-webkit-scrollbar {
-    width: 8px;
+.status-bar {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    color: #666;
+    font-size: 14px;
 }
 
-.file-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.file-list::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 4px;
-}
-
-/* 响应式设计 */
+/* 响应式 */
 @media (max-width: 768px) {
-    .address-bar {
+    .path-bar {
         flex-direction: column;
-        align-items: stretch;
     }
     
-    .address-input-container {
-        min-width: auto;
+    .file-info {
+        display: none;
     }
     
-    .path-buttons {
-        justify-content: center;
-    }
-    
-    .file-controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .control-group,
-    .view-controls {
-        justify-content: center;
-    }
-    
-    .file-list-header,
     .file-item {
-        grid-template-columns: 1fr auto;
-        grid-template-rows: auto auto;
+        flex-direction: column;
+        align-items: flex-start;
         gap: 8px;
     }
     
-    .file-size,
-    .file-date,
-    .file-permissions {
-        grid-column: 1;
-        font-size: 11px;
-    }
-    
     .file-actions {
-        grid-column: 1 / -1;
+        width: 100%;
         justify-content: flex-end;
     }
 }
@@ -493,8 +225,33 @@
 
 <script>
 let currentPath = '/';
-let showHidden = false;
-let sortBy = 'name';
+
+// 错误日志记录函数
+function logError(type, message, details) {
+    const errorData = {
+        type: type || 'error',
+        message: message || 'Unknown error',
+        details: details || '',
+        url: window.location.href
+    };
+    
+    console.log('Logging error:', errorData); // 调试信息
+    
+    // 发送到调试API（不需要认证）
+    fetch('/cgi-bin/luci/filetransfer/debug/log_error', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: Object.keys(errorData).map(key => 
+            encodeURIComponent(key) + '=' + encodeURIComponent(errorData[key])
+        ).join('&')
+    }).then(response => {
+        console.log('Error logged successfully:', response.status);
+    }).catch(err => {
+        console.error('Failed to log error:', err);
+    });
+}
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -504,20 +261,14 @@ document.addEventListener('DOMContentLoaded', function() {
 // 导航到指定路径
 function navigateTo(path) {
     // 规范化路径
-    path = path.replace(/\/+/g, '/'); // 移除多余的斜杠
+    path = path.replace(/\/+/g, '/');
     if (path !== '/' && path.endsWith('/')) {
-        path = path.slice(0, -1); // 移除末尾斜杠
+        path = path.slice(0, -1);
     }
     
     currentPath = path;
     document.getElementById('current-path').value = path;
-    updateBreadcrumb();
     refreshFiles();
-}
-
-// 导航到文件夹（专门用于点击文件夹）
-function navigateToFolder(path) {
-    navigateTo(path);
 }
 
 // 从地址栏导航
@@ -526,72 +277,46 @@ function navigateToPath() {
     navigateTo(path);
 }
 
-// 导航到上级目录
-function navigateUp() {
-    if (currentPath !== '/') {
-        const parts = currentPath.split('/').filter(p => p);
-        parts.pop();
-        const newPath = '/' + parts.join('/');
-        navigateTo(newPath === '/' ? '/' : newPath);
-    }
-}
-
-// 导航到主目录
-function navigateHome() {
-    navigateTo('/root');
-}
-
-// 导航到根目录
-function navigateRoot() {
-    navigateTo('/');
-}
-
-// 更新面包屑导航
-function updateBreadcrumb() {
-    const breadcrumb = document.getElementById('breadcrumb-nav');
-    const parts = currentPath.split('/').filter(p => p);
-    
-    let html = `<span class="breadcrumb-item ${currentPath === '/' ? 'active' : ''}" onclick="navigateTo('/')"><%:Root%></span>`;
-    let currentBuildPath = '';
-    
-    parts.forEach((part, index) => {
-        currentBuildPath += '/' + part;
-        const isLast = index === parts.length - 1;
-        html += '<span class="breadcrumb-separator"> / </span>';
-        html += `<span class="breadcrumb-item ${isLast ? 'active' : ''}" onclick="navigateTo('${currentBuildPath}')">${part}</span>`;
-    });
-    
-    breadcrumb.innerHTML = html;
-    
-    // 同时更新地址栏
-    document.getElementById('current-path').value = currentPath;
+// 导航到文件夹（专门用于点击文件夹）
+function navigateToFolder(path) {
+    console.log('Navigating to folder:', path); // 调试信息
+    navigateTo(path);
 }
 
 // 刷新文件列表
 function refreshFiles() {
     const fileList = document.getElementById('file-list');
-    const loading = document.getElementById('loading');
     
-    loading.style.display = 'block';
+    fileList.innerHTML = '<div class="loading"><%:Loading...%></div>';
     
     // 发送请求获取文件列表
     fetch('/cgi-bin/luci/admin/system/filetransfer/browse_files', {
-                    method: 'POST',
+        method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `path=${encodeURIComponent(currentPath)}&show_hidden=${showHidden}&sort_by=${sortBy}`
-                })
-                .then(response => response.json())
-                .then(data => {
-        loading.style.display = 'none';
-        displayFiles(data.files || []);
-        updateFileCount(data.files ? data.files.length : 0);
-                })
-                .catch(error => {
-        loading.style.display = 'none';
-        // Error loading files
-        showMessage('Failed to load files', 'error');
+        body: `path=${encodeURIComponent(currentPath)}`
+    })
+    .then(response => {
+        if (!response.ok) {
+            logError('HTTP_ERROR', `HTTP ${response.status}: ${response.statusText}`, 'browse_files API请求失败');
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('API Response:', data); // 调试信息
+        if (data.status === 'success') {
+            displayFiles(data.files || []);
+            updateFileCount(data.files ? data.files.length : 0);
+        } else {
+            logError('API_ERROR', 'API返回错误状态', JSON.stringify(data));
+            throw new Error('API returned error status');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading files:', error);
+        logError('FETCH_ERROR', error.message, `获取文件列表失败，当前路径: ${currentPath}`);
         // 显示示例文件列表作为fallback
         displaySampleFiles();
     });
@@ -599,53 +324,32 @@ function refreshFiles() {
 
 // 显示示例文件列表（当API不可用时）
 function displaySampleFiles() {
-    const sampleFiles = [
-        {
+    const sampleFiles = [];
+    
+    // 如果不是根目录，添加返回上级目录
+    if (currentPath !== '/') {
+        sampleFiles.push({
             name: '..',
             type: 'directory',
             size: 0,
-            modified: '2024-06-29 10:00',
+            modified: '',
             permissions: 'drwxr-xr-x',
             path: currentPath.split('/').slice(0, -1).join('/') || '/'
-        },
-        {
-            name: 'bin',
-            type: 'directory',
-            size: 0,
-            modified: '2024-06-29 09:30',
-            permissions: 'drwxr-xr-x',
-            path: currentPath + '/bin'
-        },
-        {
-            name: 'etc',
-            type: 'directory',
-            size: 0,
-            modified: '2024-06-29 09:25',
-            permissions: 'drwxr-xr-x',
-            path: currentPath + '/etc'
-        },
-        {
-            name: 'tmp',
-            type: 'directory',
-            size: 0,
-            modified: '2024-06-29 10:05',
-            permissions: 'drwxrwxrwx',
-            path: currentPath + '/tmp'
-        },
-        {
-            name: 'config.txt',
-            type: 'file',
-            size: 1024,
-            modified: '2024-06-29 08:15',
-            permissions: '-rw-r--r--'
-        }
-    ];
-    
-    if (currentPath === '/') {
-        displayFiles(sampleFiles.slice(1)); // 不显示 .. 在根目录
-    } else {
-        displayFiles(sampleFiles);
+        });
     }
+    
+    // 添加示例文件夹和文件
+    if (currentPath === '/') {
+        sampleFiles.push(
+            { name: 'bin', type: 'directory', size: 0, modified: '2024-06-29 09:30', permissions: 'drwxr-xr-x' },
+            { name: 'etc', type: 'directory', size: 0, modified: '2024-06-29 09:25', permissions: 'drwxr-xr-x' },
+            { name: 'tmp', type: 'directory', size: 0, modified: '2024-06-29 10:05', permissions: 'drwxrwxrwx' },
+            { name: 'usr', type: 'directory', size: 0, modified: '2024-06-29 09:20', permissions: 'drwxr-xr-x' },
+            { name: 'var', type: 'directory', size: 0, modified: '2024-06-29 09:15', permissions: 'drwxr-xr-x' }
+        );
+    }
+    
+    displayFiles(sampleFiles);
     updateFileCount(sampleFiles.length);
 }
 
@@ -654,36 +358,50 @@ function displayFiles(files) {
     const fileList = document.getElementById('file-list');
     
     if (files.length === 0) {
-        fileList.innerHTML = '<div class="no-files" style="text-align: center; padding: 40px; color: #999;"><%:No files found%></div>';
-            return;
-        }
+        fileList.innerHTML = '<div class="loading"><%:No files found%></div>';
+        return;
+    }
 
     let html = '';
     files.forEach(file => {
         const isFolder = file.type === 'directory';
-        const iconClass = getFileIcon(file);
+        const icon = isFolder ? '📁' : '📄';
         const sizeDisplay = isFolder ? '-' : formatFileSize(file.size);
         
-        const targetPath = file.path || (currentPath === '/' ? '/' + file.name : currentPath + '/' + file.name);
+        // 构建目标路径
+        let targetPath;
+        if (file.name === '..') {
+            // 上级目录 - 使用服务器返回的path字段或者自己计算
+            if (file.path) {
+                targetPath = file.path;
+            } else {
+                const parts = currentPath.split('/').filter(p => p);
+                parts.pop();
+                targetPath = parts.length > 0 ? '/' + parts.join('/') : '/';
+            }
+        } else {
+            // 普通文件夹或文件 - 优先使用服务器返回的path字段
+            if (file.path) {
+                targetPath = file.path;
+            } else {
+                targetPath = currentPath === '/' ? '/' + file.name : currentPath + '/' + file.name;
+            }
+        }
         
         html += `
-            <div class="file-item ${isFolder ? 'folder' : ''} ${file.hidden ? 'hidden' : ''}" 
-                 ${isFolder ? `onclick="navigateToFolder('${targetPath}')" style="cursor: pointer;"` : ''}>
-                <div class="file-name">
-                    <i class="file-icon ${iconClass}">${isFolder ? '📁' : '📄'}</i>
-                    <span>${file.name}</span>
+            <div class="file-item ${isFolder ? 'folder' : ''}" ${isFolder ? `onclick="navigateToFolder('${targetPath}')" title="点击打开文件夹"` : ''}>
+                <div class="file-icon">${icon}</div>
+                <div class="file-name">${file.name}</div>
+                <div class="file-info">
+                    <div class="file-size">${sizeDisplay}</div>
+                    <div class="file-date">${file.modified}</div>
                 </div>
-                <div class="file-size">${sizeDisplay}</div>
-                <div class="file-date">${file.modified}</div>
-                <div class="file-permissions">${file.permissions}</div>
+                ${!isFolder ? `
                 <div class="file-actions">
-                    ${isFolder ? 
-                        `<button class="btn btn-sm btn-primary" onclick="navigateToFolder('${targetPath}')"><%:Open%></button>` :
-                        `<button class="btn btn-sm btn-success" onclick="downloadFile('${file.name}')"><%:Download%></button>
-                         <button class="btn btn-sm btn-warning" onclick="editFile('${file.name}')"><%:Edit%></button>`
-                    }
-                    ${file.name !== '..' ? `<button class="btn btn-sm btn-danger" onclick="deleteFile('${file.name}', ${isFolder})"><%:Delete%></button>` : ''}
+                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); downloadFile('${file.name}')"><%:Download%></button>
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteFile('${file.name}')"><%:Delete%></button>
                 </div>
+                ` : ''}
             </div>
         `;
     });
@@ -691,28 +409,12 @@ function displayFiles(files) {
     fileList.innerHTML = html;
 }
 
-// 获取文件图标
-function getFileIcon(file) {
-    if (file.type === 'directory') return 'folder';
-    
-    const ext = file.name.split('.').pop().toLowerCase();
-    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg'];
-    const archiveExts = ['zip', 'tar', 'gz', 'bz2', '7z', 'rar'];
-    const executableExts = ['sh', 'bin', 'exe'];
-    
-    if (imageExts.includes(ext)) return 'image';
-    if (archiveExts.includes(ext)) return 'archive';
-    if (executableExts.includes(ext)) return 'executable';
-    
-    return 'file';
-    }
-
-    // 格式化文件大小
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
@@ -721,46 +423,32 @@ function updateFileCount(count) {
     document.getElementById('file-count').textContent = `${count} <%:items%>`;
 }
 
-// 切换隐藏文件显示
-function toggleHiddenFiles() {
-    showHidden = document.getElementById('show-hidden').checked;
-    refreshFiles();
-}
-
-// 排序文件
-function sortFiles() {
-    sortBy = document.getElementById('sort-by').value;
-    refreshFiles();
-}
-
-// 显示消息  
-function showMessage(message, type) {
-    // 可以在这里添加UI消息显示逻辑
-}
-
-// 文件操作函数
-function createFolder() {
-    const name = prompt('<%:Enter folder name%>:');
-    if (name) {
-        showMessage('Folder creation not implemented yet', 'warning');
-    }
-}
-
-function uploadFile() {
-    window.location.href = '/cgi-bin/luci/admin/system/filetransfer/main';
-}
-
+// 文件操作
 function downloadFile(filename) {
-    showMessage('File download not implemented yet', 'warning');
+    window.location.href = `/cgi-bin/luci/admin/system/filetransfer/download?filename=${encodeURIComponent(filename)}`;
 }
 
-function editFile(filename) {
-    showMessage('File editing not implemented yet', 'warning');
-}
-
-function deleteFile(filename, isFolder) {
+function deleteFile(filename) {
     if (confirm(`<%:Are you sure you want to delete%> "${filename}"?`)) {
-        showMessage('File deletion not implemented yet', 'warning');
+        fetch('/cgi-bin/luci/admin/system/filetransfer/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `filename=${encodeURIComponent(filename)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                refreshFiles();
+            } else {
+                alert('删除失败');
+            }
+        })
+        .catch(error => {
+            console.error('删除错误:', error);
+            alert('删除失败');
+        });
     }
 }
 </script>

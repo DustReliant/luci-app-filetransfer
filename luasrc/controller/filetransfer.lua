@@ -84,7 +84,16 @@ end
 -- 检查文件类型
 local function check_file_type(filename)
     local ext = filename:match("%.([^%.]+)$")
-    return ext and ALLOWED_EXTENSIONS[ext:lower()]
+    if not ext then
+        -- 没有扩展名的文件暂时允许
+        log_to_file("DEBUG: 文件没有扩展名: " .. filename)
+        return true
+    end
+    local allowed = ALLOWED_EXTENSIONS[ext:lower()]
+    if not allowed then
+        log_to_file("DEBUG: 不允许的扩展名: " .. ext)
+    end
+    return allowed
 end
 
 -- 检查文件大小
@@ -160,6 +169,7 @@ function index()
     entry({"admin", "system", "filetransfer", "clear_all"}, call("action_clear_all")).leaf = true
     entry({"admin", "system", "filetransfer", "preview"}, call("action_preview")).leaf = true
     entry({"admin", "system", "filetransfer", "install_ipk"}, call("action_install_ipk")).leaf = true
+    entry({"admin", "system", "filetransfer", "browse_files"}, call("action_browse_files")).leaf = true
     
     -- 日志相关
     entry({"admin", "system", "filetransfer", "get_logs"}, call("action_get_logs")).leaf = true
@@ -176,101 +186,120 @@ function index()
     -- 文件浏览相关
     entry({"admin", "system", "filetransfer", "browse_files"}, call("action_browse_files")).leaf = true
     
+    -- 调试API路由（不需要认证）
+    entry({"filetransfer", "debug", "log_error"}, call("action_debug_log_error")).leaf = true
+    entry({"filetransfer", "debug", "get_logs"}, call("action_get_logs")).leaf = true
+    entry({"filetransfer", "debug", "clear_logs"}, call("action_clear_logs")).leaf = true
+    entry({"filetransfer", "debug", "export_logs"}, call("action_export_logs")).leaf = true
 
 end
 
 -- 文件上传处理函数
 function action_upload()
-    ensure_upload_dir()
+    log_to_file("=== 开始处理文件上传请求 ===")
+    log_to_file("请求方法: " .. (http.getenv("REQUEST_METHOD") or "unknown"))
+    log_to_file("内容类型: " .. (http.getenv("CONTENT_TYPE") or "unknown"))
+    log_to_file("内容长度: " .. (http.getenv("CONTENT_LENGTH") or "unknown"))
     
-    -- 使用正确的文件处理方式
-    local upload_info = nil
-    
-    -- 设置文件处理器来正确接收文件内容
-    http.setfilehandler(
-        function(meta, chunk, eof)
-            if not upload_info then
-                -- 初始化上传信息
-                local filename = meta.name or meta.file
+    -- 添加错误处理包装
+    local status, err = pcall(function()
+        ensure_upload_dir()
+        
+        -- 使用正确的文件处理方式
+        local upload_info = nil
+        
+        -- 设置文件处理器来正确接收文件内容
+        http.setfilehandler(
+            function(meta, chunk, eof)
+                if not upload_info then
+                                    -- 初始化上传信息
+                local filename = meta.file or meta.name
+                log_to_file("DEBUG: meta.file=" .. tostring(meta.file) .. ", meta.name=" .. tostring(meta.name))
                 if not filename then
                     log_to_file("上传文件名缺失")
                     return
                 end
-                
-                filename = sanitize_filename(filename)
-                if not filename then
-                    log_to_file("文件名不合法: " .. tostring(meta.name or meta.file))
-                    return
+                    
+                    filename = sanitize_filename(filename)
+                    if not filename then
+                        log_to_file("文件名不合法: " .. tostring(meta.name or meta.file))
+                        return
+                    end
+                    
+                    if not check_file_type(filename) then
+                        log_to_file("文件类型不允许: " .. filename)
+                        return
+                    end
+                    
+                    local filepath = UPLOAD_DIR .. filename
+                    local file_handle = io.open(filepath, "wb")
+                    if not file_handle then
+                        log_to_file("无法创建文件: " .. filepath)
+                        return
+                    end
+                    
+                    upload_info = {
+                        handle = file_handle,
+                        filename = filename,
+                        filepath = filepath,
+                        size = 0
+                    }
+                    
+                    log_to_file("开始上传文件: " .. filename)
                 end
                 
-                if not check_file_type(filename) then
-                    log_to_file("文件类型不允许: " .. filename)
-                    return
+                -- 写入文件块
+                if chunk and upload_info and upload_info.handle then
+                    upload_info.handle:write(chunk)
+                    upload_info.size = upload_info.size + #chunk
+                    
+                    -- 检查文件大小
+                    if upload_info.size > MAX_FILE_SIZE then
+                        upload_info.handle:close()
+                        fs.unlink(upload_info.filepath)
+                        log_to_file("文件过大，上传终止: " .. upload_info.filename)
+                        upload_info = nil
+                        return
+                    end
                 end
                 
-                local filepath = UPLOAD_DIR .. filename
-                local file_handle = io.open(filepath, "wb")
-                if not file_handle then
-                    log_to_file("无法创建文件: " .. filepath)
-                    return
-                end
-                
-                upload_info = {
-                    handle = file_handle,
-                    filename = filename,
-                    filepath = filepath,
-                    size = 0
-                }
-                
-                log_to_file("开始上传文件: " .. filename)
-            end
-            
-            -- 写入文件块
-            if chunk and upload_info and upload_info.handle then
-                upload_info.handle:write(chunk)
-                upload_info.size = upload_info.size + #chunk
-                
-                -- 检查文件大小
-                if upload_info.size > MAX_FILE_SIZE then
+                -- 文件上传完成
+                if eof and upload_info and upload_info.handle then
                     upload_info.handle:close()
-                    fs.unlink(upload_info.filepath)
-                    log_to_file("文件过大，上传终止: " .. upload_info.filename)
-                    upload_info = nil
-                    return
+                    log_to_file("文件上传完成: " .. upload_info.filename .. ", 大小: " .. upload_info.size)
+                    
+                    -- 存储到全局变量供后续使用
+                    http.context.upload_result = upload_info
                 end
             end
-            
-            -- 文件上传完成
-            if eof and upload_info and upload_info.handle then
-                upload_info.handle:close()
-                log_to_file("文件上传完成: " .. upload_info.filename .. ", 大小: " .. upload_info.size)
-                
-                -- 存储到全局变量供后续使用
-                http.context.upload_result = upload_info
+        )
+        
+        -- 获取表单数据以触发文件处理
+        local form_data = http.formvalue()
+        
+        -- 检查上传结果
+        if http.context.upload_result then
+            local result = http.context.upload_result
+            if json then
+                http.write_json({
+                    status = "success", 
+                    filename = result.filename,
+                    path = result.filepath,
+                    size = result.size
+                })
+            else
+                http.write(string.format('{"status": "success", "filename": "%s", "path": "%s", "size": %d}',
+                    result.filename, result.filepath, result.size))
             end
-        end
-    )
-    
-    -- 获取表单数据以触发文件处理
-    local form_data = http.formvalue()
-    
-    -- 检查上传结果
-    if http.context.upload_result then
-        local result = http.context.upload_result
-        if json then
-            http.write_json({
-                status = "success", 
-                filename = result.filename,
-                path = result.filepath,
-                size = result.size
-            })
         else
-            http.write(string.format('{"status": "success", "filename": "%s", "path": "%s", "size": %d}',
-                result.filename, result.filepath, result.size))
+            log_to_file("没有接收到文件上传数据")
+            http.status(400, "No file uploaded")
         end
-    else
-        log_to_file("没有接收到文件上传数据")
-        http.status(400, "No file uploaded")
+    end)
+    
+    if not status then
+        log_to_file("文件上传处理失败: " .. err)
+        http.status(500, "Internal Server Error")
     end
 end
 
@@ -673,11 +702,30 @@ function action_browse_files()
                         
                         -- 根据设置决定是否显示隐藏文件
                         if show_hidden or not is_hidden or name == ".." then
-                            local file_path = path
-                            if path:sub(-1) ~= "/" then
-                                file_path = file_path .. "/"
+                            local file_path
+                            if name == ".." then
+                                -- 上级目录路径处理
+                                local parts = {}
+                                for part in path:gmatch("[^/]+") do
+                                    table.insert(parts, part)
+                                end
+                                if #parts > 0 then
+                                    table.remove(parts) -- 移除最后一个部分
+                                end
+                                file_path = "/" .. table.concat(parts, "/")
+                                if file_path == "/" then
+                                    file_path = "/"
+                                elseif file_path:sub(-1) == "/" and #file_path > 1 then
+                                    file_path = file_path:sub(1, -2)
+                                end
+                            else
+                                -- 普通文件或文件夹路径
+                                if path:sub(-1) == "/" then
+                                    file_path = path .. name
+                                else
+                                    file_path = path .. "/" .. name
+                                end
                             end
-                            file_path = file_path .. name
                             
                             table.insert(files, {
                                 name = name,
@@ -790,4 +838,44 @@ function action_log_error()
     else
         http.write('{"status": "success", "message": "Error logged successfully"}')
     end
+end
+
+-- 调试错误日志函数（不需要认证）
+function action_debug_log_error()
+    log_to_file("=== 调试错误日志API调用 ===")
+    
+    local error_type = http.formvalue("error_type") or http.formvalue("type") or "error"
+    local error_message = http.formvalue("error_message") or http.formvalue("message") or ""
+    local error_details = http.formvalue("error_details") or http.formvalue("details") or ""
+    local error_url = http.formvalue("error_url") or http.formvalue("url") or ""
+    local error_user_agent = http.getenv("HTTP_USER_AGENT") or ""
+    local error_timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    
+    if error_message == "" then
+        http.header("Content-Type", "application/json")
+        http.write('{"status": "error", "message": "No error message provided"}')
+        return
+    end
+    
+    -- 构建错误日志条目
+    local log_entry = string.format(
+        "[DEBUG-%s] %s - %s | URL: %s | Details: %s | User-Agent: %s",
+        error_timestamp,
+        error_type,
+        error_message,
+        error_url,
+        error_details,
+        error_user_agent
+    )
+    
+    -- 记录到文件传输日志
+    log_to_file(log_entry)
+    
+    -- 使用系统命令记录到系统日志
+    local safe_message = error_message:gsub("'", "'\"'\"'")
+    local syslog_cmd = string.format("logger -t filetransfer-debug 'Browser Error: %s - %s'", error_type, safe_message)
+    os.execute(syslog_cmd)
+    
+    http.header("Content-Type", "application/json")
+    http.write('{"status": "success", "message": "Debug error logged successfully"}')
 end

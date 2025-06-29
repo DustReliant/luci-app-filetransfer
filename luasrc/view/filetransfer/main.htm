@@ -571,7 +571,7 @@
         formData.append('error_user_agent', errorEntry.userAgent);
         formData.append('error_timestamp', errorEntry.timestamp);
         
-        // 使用调试API，不需要认证
+        // 发送错误日志到服务器
         fetch('/cgi-bin/luci/admin/system/filetransfer/log_error', {
             method: 'POST',
             body: formData
