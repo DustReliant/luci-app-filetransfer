@@ -12,22 +12,22 @@
         <div class="cbi-section-descr"><%:Upload and manage files through Web interface%></div>
     
     <!-- 文件上传区域 -->
-    <div class="upload-area" id="upload-area">
-            <div class="upload-zone" id="upload-zone">
-                <div class="upload-icon">📁</div>
-                <p class="upload-title"><%:Drag files here or click to upload%></p>
-                <p class="upload-hint"><%:Supported file types: ipk, tar, gz, zip, txt, conf, json%></p>
-                <p class="upload-hint"><%:Maximum file size: 50MB%></p>
-                <input type="file" id="fileInput" multiple accept=".ipk,.tar,.gz,.zip,.txt,.conf,.json" style="display: none;" />
-                <button class="btn btn-primary upload-btn" onclick="document.getElementById('fileInput').click()">
-                    <i class="icon-upload"></i> <%:Upload%>
-                </button>
+    <div class="upload-area" id="upload-area" style="max-width: 400px; margin: 0 auto;">
+        <div class="upload-zone" id="upload-zone" style="height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #aaa; border-radius: 10px; background: #fafbfc;">
+            <div class="upload-icon" style="font-size: 32px;">📁</div>
+            <p class="upload-title" style="font-size: 16px; margin: 8px 0 2px 0;"><%:Drag files here or click to upload%></p>
+            <p class="upload-hint" style="font-size: 12px; margin: 0 0 2px 0;"><%:Supported file types: ipk, tar, gz, zip, txt, conf, json%></p>
+            <p class="upload-hint" style="font-size: 12px; margin: 0 0 2px 0;"><%:Maximum file size: 50MB%></p>
+            <input type="file" id="fileInput" multiple accept=".ipk,.tar,.gz,.zip,.txt,.conf,.json" style="display: none;" />
+            <button class="btn btn-primary upload-btn" onclick="document.getElementById('fileInput').click()" style="margin-top: 8px; padding: 6px 12px; font-size: 14px;">
+                <i class="icon-upload"></i> <%:Upload%>
+            </button>
         </div>
-            <div class="progress-container" id="progress-container" style="display: none;">
-            <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
+        <div class="progress-container" id="progress-container" style="display: none; margin-top: 10px;">
+            <div class="progress-bar" style="width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden;">
+                <div class="progress-fill" id="progress-fill" style="height: 100%; background: #007cba; width: 0%; transition: width 0.3s;"></div>
             </div>
-                <span class="progress-text" id="progress-text">0%</span>
+            <span class="progress-text" id="progress-text" style="font-size: 12px; margin-left: 10px;">0%</span>
         </div>
     </div>
 
@@ -199,7 +199,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
     animation: shimmer 2s infinite;
 }
 
@@ -212,25 +212,20 @@
     display: block;
     text-align: center;
     margin-top: 10px;
-    font-size: 14px;
     font-weight: 600;
     color: #667eea;
 }
 
-/* 文件列表区域 */
+/* 文件列表样式 */
 .file-list-section {
     margin-top: 40px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    padding: 30px;
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
     gap: 15px;
 }
@@ -238,13 +233,13 @@
 .section-header h3 {
     margin: 0;
     color: #333;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 600;
 }
 
 .file-controls {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
 }
@@ -257,194 +252,114 @@
 
 .search-box i {
     position: absolute;
-    left: 15px;
+    left: 12px;
     color: #999;
-    font-size: 16px;
+    z-index: 1;
 }
 
-.search-box input[type="text"] {
-    padding: 12px 15px 12px 45px;
+.search-box input {
+    padding: 8px 12px 8px 35px;
     border: 2px solid #e0e0e0;
     border-radius: 25px;
-    background: #f8f9fa;
-    transition: all 0.3s ease;
     font-size: 14px;
-    min-width: 250px;
-}
-
-.search-box input[type="text"]:focus {
-    border-color: #667eea;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    transition: all 0.3s ease;
     background: white;
 }
 
-/* 按钮样式 */
+.search-box input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .btn {
-    padding: 12px 20px;
+    padding: 8px 16px;
     border: none;
-    border-radius: 25px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
-    text-decoration: none;
+    transition: all 0.3s ease;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin: 5px;
-    font-size: 14px;
-    font-weight: 600;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.btn:hover::before {
-    left: 100%;
+    gap: 5px;
+    text-decoration: none;
+    color: white;
 }
 
 .btn-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
 }
 
 .btn-secondary {
     background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-    color: white;
-}
-
-.btn-secondary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(108, 117, 125, 0.3);
 }
 
 .btn-success {
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-}
-
-.btn-success:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
-    color: white;
-}
-
-.btn-danger:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
 }
 
 .btn-warning {
     background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-    color: white;
+    color: #333;
 }
 
-.btn-warning:hover {
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-.refresh-btn {
-    animation: spin 2s linear infinite;
-    animation-play-state: paused;
-}
-
-.refresh-btn:hover {
-    animation-play-state: running;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* 文件表格样式 */
 .file-table-container {
-    overflow-x: auto;
+    background: white;
     border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .file-table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
-    border-radius: 15px;
-    overflow: hidden;
-}
-
-.file-table thead {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    margin: 0;
 }
 
 .file-table th {
-    padding: 18px 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 15px;
     text-align: left;
     font-weight: 600;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #333;
+    border-bottom: 2px solid #dee2e6;
 }
 
-.file-table tbody tr {
-    transition: all 0.3s ease;
-    border-bottom: 1px solid #f0f0f0;
+.file-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f3f4;
+    vertical-align: middle;
 }
 
 .file-table tbody tr:hover {
     background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
-    transform: scale(1.01);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
-}
-
-.file-table td {
-    padding: 15px;
-    vertical-align: middle;
 }
 
 .file-type-icon {
     font-size: 20px;
     margin-right: 10px;
-    display: inline-block;
-    animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-5px); }
-    60% { transform: translateY(-3px); }
+    vertical-align: middle;
 }
 
 .file-actions {
     display: flex;
-    gap: 8px;
+    gap: 5px;
     flex-wrap: wrap;
 }
 
 .file-actions .btn {
-    padding: 8px 12px;
+    padding: 6px 12px;
     font-size: 12px;
-    border-radius: 20px;
 }
 
 /* 消息提示样式 */
@@ -452,13 +367,19 @@
     position: fixed;
     top: 20px;
     right: 20px;
-    padding: 15px 25px;
+    padding: 15px 20px;
     border-radius: 10px;
     color: white;
-    font-weight: 600;
+    font-weight: 500;
     z-index: 1000;
-    animation: slideIn 0.3s ease;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    max-width: 300px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.message.show {
+    transform: translateX(0);
 }
 
 .message.success {
@@ -466,22 +387,12 @@
 }
 
 .message.error {
-    background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
 }
 
 .message.warning {
     background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+    color: #333;
 }
 
 /* 响应式设计 */
@@ -508,49 +419,247 @@
         justify-content: center;
     }
     
-    .search-box input[type="text"] {
-        min-width: 200px;
+    .file-table {
+        font-size: 14px;
+    }
+    
+    .file-table th,
+    .file-table td {
+        padding: 8px 10px;
     }
     
     .file-actions {
         flex-direction: column;
     }
     
-    .file-table th,
-    .file-table td {
-        padding: 10px 8px;
-        font-size: 12px;
+    .file-actions .btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 
-/* 深色模式支持 */
-@media (prefers-color-scheme: dark) {
-    .cbi-section {
-        background: rgba(30, 30, 30, 0.95);
-        color: #fff;
-    }
-    
-    .upload-zone {
-        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-        border-color: #667eea;
-    }
-    
-    .file-table {
-        background: #2a2a2a;
-        color: #fff;
-    }
-    
-    .file-table tbody tr {
-        border-bottom-color: #444;
-    }
-    
-    .file-table tbody tr:hover {
-        background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
-    }
+/* 错误日志面板样式 */
+.error-log-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 400px;
+    max-height: 300px;
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    border-radius: 10px;
+    padding: 15px;
+    font-family: monospace;
+    font-size: 12px;
+    overflow-y: auto;
+    z-index: 1001;
+    display: none;
+}
+
+.error-log-panel.show {
+    display: block;
+}
+
+.error-log-panel h4 {
+    margin: 0 0 10px 0;
+    color: #ff6b6b;
+}
+
+.error-log-entry {
+    margin-bottom: 8px;
+    padding: 5px;
+    border-left: 3px solid #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.error-log-time {
+    color: #aaa;
+    font-size: 10px;
+}
+
+.error-log-message {
+    color: #ff6b6b;
+    word-break: break-all;
 }
 </style>
 
 <script>
+// 全局错误捕获和日志记录系统
+(function() {
+    'use strict';
+    
+    // 错误日志存储
+    window.errorLog = [];
+    const MAX_ERROR_LOG_SIZE = 50;
+    
+    // 创建错误日志面板
+    function createErrorLogPanel() {
+        const panel = document.createElement('div');
+        panel.className = 'error-log-panel';
+        panel.id = 'error-log-panel';
+        panel.innerHTML = `
+            <h4>🔍 错误日志监控</h4>
+            <div id="error-log-content"></div>
+            <button onclick="toggleErrorLog()" style="margin-top: 10px; padding: 5px 10px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">切换显示</button>
+        `;
+        document.body.appendChild(panel);
+    }
+    
+    // 切换错误日志显示
+    window.toggleErrorLog = function() {
+        const panel = document.getElementById('error-log-panel');
+        panel.classList.toggle('show');
+    };
+    
+    // 添加错误日志
+    function addErrorLog(type, message, details = null) {
+        const timestamp = new Date().toLocaleString();
+        const errorEntry = {
+            timestamp: timestamp,
+            type: type,
+            message: message,
+            details: details,
+            url: window.location.href,
+            userAgent: navigator.userAgent
+        };
+        
+        window.errorLog.push(errorEntry);
+        
+        // 限制日志大小
+        if (window.errorLog.length > MAX_ERROR_LOG_SIZE) {
+            window.errorLog.shift();
+        }
+        
+        // 更新显示
+        updateErrorLogDisplay();
+        
+        // 发送到服务器
+        sendErrorToServer(errorEntry);
+        
+        // 控制台输出
+        console.error(`[${timestamp}] ${type}: ${message}`, details);
+    }
+    
+    // 更新错误日志显示
+    function updateErrorLogDisplay() {
+        const content = document.getElementById('error-log-content');
+        if (!content) return;
+        
+        content.innerHTML = window.errorLog.map(entry => `
+            <div class="error-log-entry">
+                <div class="error-log-time">${entry.timestamp}</div>
+                <div class="error-log-message">[${entry.type}] ${entry.message}</div>
+                ${entry.details ? `<div style="color: #ccc; font-size: 10px;">${JSON.stringify(entry.details)}</div>` : ''}
+            </div>
+        `).join('');
+    }
+    
+    // 发送错误到服务器
+    function sendErrorToServer(errorEntry) {
+        const formData = new FormData();
+        formData.append('error_type', errorEntry.type);
+        formData.append('error_message', errorEntry.message);
+        formData.append('error_details', JSON.stringify(errorEntry.details || {}));
+        formData.append('error_url', errorEntry.url);
+        formData.append('error_user_agent', errorEntry.userAgent);
+        formData.append('error_timestamp', errorEntry.timestamp);
+        
+        // 使用调试API，不需要认证
+        fetch('/cgi-bin/luci/filetransfer/debug/log_error', {
+            method: 'POST',
+            body: formData
+        }).catch(err => {
+            console.error('Failed to send error to server:', err);
+        });
+    }
+    
+    // 全局错误处理器
+    window.addEventListener('error', function(event) {
+        addErrorLog('JavaScript Error', event.message, {
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            error: event.error ? event.error.stack : null
+        });
+    });
+    
+    // 未处理的Promise拒绝
+    window.addEventListener('unhandledrejection', function(event) {
+        addErrorLog('Unhandled Promise Rejection', event.reason, {
+            promise: event.promise
+        });
+    });
+    
+    // 网络请求错误监控
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        return originalFetch.apply(this, args).then(response => {
+            if (!response.ok) {
+                addErrorLog('HTTP Error', `HTTP ${response.status}: ${response.statusText}`, {
+                    url: args[0],
+                    status: response.status,
+                    statusText: response.statusText
+                });
+            }
+            return response;
+        }).catch(error => {
+            addErrorLog('Network Error', error.message, {
+                url: args[0],
+                error: error.toString()
+            });
+            throw error;
+        });
+    };
+    
+    // XMLHttpRequest错误监控
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    const originalXHRSend = XMLHttpRequest.prototype.send;
+    
+    XMLHttpRequest.prototype.open = function(method, url, ...args) {
+        this._xhrUrl = url;
+        this._xhrMethod = method;
+        return originalXHROpen.apply(this, [method, url, ...args]);
+    };
+    
+    XMLHttpRequest.prototype.send = function(data) {
+        const xhr = this;
+        const originalOnReadyStateChange = xhr.onreadystatechange;
+        
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status >= 400) {
+                    addErrorLog('XHR Error', `HTTP ${xhr.status}: ${xhr.statusText}`, {
+                        url: xhr._xhrUrl,
+                        method: xhr._xhrMethod,
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        responseText: xhr.responseText.substring(0, 500)
+                    });
+                }
+            }
+            
+            if (originalOnReadyStateChange) {
+                originalOnReadyStateChange.apply(xhr, arguments);
+            }
+        };
+        
+        return originalXHRSend.apply(this, [data]);
+    };
+    
+    // 初始化错误日志面板
+    createErrorLogPanel();
+    
+    // 添加键盘快捷键显示错误日志 (Ctrl+Shift+E)
+    document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey && event.shiftKey && event.key === 'E') {
+            event.preventDefault();
+            toggleErrorLog();
+        }
+    });
+    
+    console.log('🔍 错误监控系统已启动 - 按 Ctrl+Shift+E 查看错误日志');
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
     const uploadZone = document.getElementById('upload-zone');
     const fileInput = document.getElementById('fileInput');
@@ -598,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('filename', file.name);
-
+        
         progressContainer.style.display = 'block';
         progressFill.style.width = '0%';
         progressText.textContent = '0%';

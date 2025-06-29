@@ -6,7 +6,28 @@ local sys = require "luci.sys"
 local http = require "luci.http"
 local util = require "luci.util"
 local fs = require "nixio.fs"
-local json = require "luci.jsonc"
+-- 使用更兼容的JSON处理方式
+local json
+local success, result = pcall(function()
+    return require "luci.jsonc"
+end)
+if success then
+    json = result
+else
+    success, result = pcall(function()
+        return require "luci.json"
+    end)
+    if success then
+        json = result
+    else
+        success, result = pcall(function()
+            return require "cjson"
+        end)
+        if success then
+            json = result
+        end
+    end
+end
 
 -- CSRF Token 存储路径
 local csrf_token_file = "/tmp/csrf_token.txt"
@@ -73,9 +94,30 @@ end
 
 -- 安全地获取文件名
 local function sanitize_filename(filename)
-    filename = filename:match("([^/\\]+)$")
-    filename = filename:gsub("[^%w%.%-_]", "")
-    return filename
+    -- 只保留最后的文件名部分
+    local name = filename:match("([^/\\]+)$")
+    if not name then
+        log_to_file("sanitize_filename: filename无效:" .. tostring(filename))
+        return nil
+    end
+    
+    -- 移除危险字符，但保留中文字符和扩展名
+    -- 只移除路径分隔符和一些特殊字符，保留其他字符包括中文
+    name = name:gsub("[/\\<>:\"|?*]", "")
+    
+    -- 确保文件名不为空且不以点开头（除非是隐藏文件且有扩展名）
+    if name == "" or name == "." or name == ".." then
+        log_to_file("sanitize_filename: 文件名为空或非法:" .. name)
+        return nil
+    end
+    
+    -- 如果文件名只是一个点，也认为是无效的
+    if name:match("^%.+$") then
+        log_to_file("sanitize_filename: 文件名只包含点:" .. name)
+        return nil
+    end
+    
+    return name
 end
 
 -- 确保上传目录存在并有正确的权限
@@ -127,43 +169,98 @@ function index()
     -- 设置相关
     entry({"admin", "system", "filetransfer", "save_settings"}, call("action_save_settings")).leaf = true
     entry({"admin", "system", "filetransfer", "get_settings"}, call("action_get_settings")).leaf = true
+    
+    -- 错误日志相关
+    entry({"admin", "system", "filetransfer", "log_error"}, call("action_log_error")).leaf = true
+    
+    -- 调试API - 不需要认证
+    entry({"filetransfer", "debug", "log_error"}, call("action_log_error")).leaf = true
 end
 
 -- 文件上传处理函数
 function action_upload()
     ensure_upload_dir()
+    local http = require "luci.http"
     
-    local file = http.formvalue("file")
-    local filename = http.formvalue("filename")
+    -- 获取multipart表单数据
+    local form = http.formvalue()
+    local file = form.file
+    local filename = form.filename
+    
+    log_to_file("收到上传请求，filename="..tostring(filename)..", file类型="..type(file))
+    
+    -- 如果没有filename，尝试从file对象获取
+    if not filename and file and type(file) == "table" then
+        filename = file.filename
+        file = file.content
+    end
+    
+    -- 如果file是table类型，尝试获取其内容
+    if type(file) == "table" then
+        if file.filename then
+            filename = file.filename
+        end
+        if file.content then
+            file = file.content
+        elseif file.file then
+            file = file.file
+        else
+            -- 尝试获取table的第一个值
+            for k, v in pairs(file) do
+                if type(v) == "string" then
+                    file = v
+                    break
+                end
+            end
+        end
+    end
     
     if not file or not filename then
+        log_to_file("上传参数缺失")
         http.status(400, "Bad Request")
         return
     end
     
     filename = sanitize_filename(filename)
     if not filename then
+        log_to_file("sanitize_filename失败")
         http.status(400, "Invalid filename")
         return
     end
     
     if not check_file_type(filename) then
+        log_to_file("文件类型不允许:"..filename)
         http.status(400, "File type not allowed")
         return
     end
     
-    if not check_file_size(file:len()) then
+    local file_size = 0
+    if type(file) == "string" then
+        file_size = #file
+    else
+        log_to_file("file不是字符串类型")
+        http.status(400, "Invalid file format")
+        return
+    end
+    
+    if not check_file_size(file_size) then
+        log_to_file("文件过大:"..file_size)
         http.status(413, "File too large")
         return
     end
     
-    local f = io.open(UPLOAD_DIR .. filename, "w")
+    local f = io.open(UPLOAD_DIR .. filename, "w+b")
     if f then
         f:write(file)
         f:close()
-        log_to_file("File uploaded: " .. filename)
-        http.write_json({status = "success", path = UPLOAD_DIR .. filename})
+        log_to_file("文件上传成功:" .. filename .. ", 大小:"..file_size)
+        if json then
+            http.write_json({status = "success", path = UPLOAD_DIR .. filename})
+        else
+            http.write('{"status": "success", "path": "' .. UPLOAD_DIR .. filename .. '"}')
+        end
     else
+        log_to_file("文件保存失败:"..filename)
         http.status(500, "Failed to save file")
     end
 end
@@ -224,7 +321,18 @@ function action_list()
         end
         dir:close()
     end
-    http.write_json({files = files})
+    if json then
+        http.write_json({files = files})
+    else
+        local json_str = '{"files": ['
+        for i, file in ipairs(files) do
+            if i > 1 then json_str = json_str .. ',' end
+            json_str = json_str .. string.format('{"name": "%s", "size": "%s", "date": "%s", "mtime": %d}', 
+                file.name, file.size, file.date, file.mtime)
+        end
+        json_str = json_str .. ']}'
+        http.write(json_str)
+    end
 end
 
 -- 文件删除函数
@@ -249,7 +357,11 @@ function action_delete()
     
     if fs.unlink(path) then
         log_to_file("File deleted: " .. filename)
-        http.write_json({status = "success"})
+        if json then
+            http.write_json({status = "success"})
+        else
+            http.write('{"status": "success"}')
+        end
     else
         http.status(500, "Failed to delete file")
     end
@@ -285,12 +397,19 @@ function action_clear_all()
         log_to_file("Failed to delete " .. error_count .. " files")
     end
     
-    http.write_json({
+    local response = {
         status = "success", 
         message = "Cleared " .. success_count .. " files",
         success_count = success_count,
         error_count = error_count
-    })
+    }
+    
+    if json then
+        http.write_json(response)
+    else
+        http.write(string.format('{"status": "success", "message": "Cleared %d files", "success_count": %d, "error_count": %d}', 
+            success_count, success_count, error_count))
+    end
 end
 
 -- 安装 IPK 文件
@@ -329,7 +448,11 @@ function action_install_ipk()
     local result = sys.exec("opkg install " .. path)
     if result:match("^Installing") then
         log_to_file("IPK installed: " .. filename)
-        http.write_json({status = "success", message = result})
+        if json then
+            http.write_json({status = "success", message = result})
+        else
+            http.write('{"status": "success", "message": "' .. result .. '"}')
+        end
     else
         http.status(500, "Failed to install IPK: " .. result)
     end
@@ -346,7 +469,17 @@ function action_get_logs()
         end
         file:close()
     end
-    http.write_json(logs)
+    if json then
+        http.write_json(logs)
+    else
+        local json_str = '['
+        for i, log in ipairs(logs) do
+            if i > 1 then json_str = json_str .. ',' end
+            json_str = json_str .. '"' .. log:gsub('"', '\\"') .. '"'
+        end
+        json_str = json_str .. ']'
+        http.write(json_str)
+    end
 end
 
 -- 清除日志函数
@@ -357,7 +490,11 @@ function action_clear_logs()
         file:write("")
         file:close()
         log_to_file("Logs cleared by user")
-        http.write_json({status = "success"})
+        if json then
+            http.write_json({status = "success"})
+        else
+            http.write('{"status": "success"}')
+        end
     else
         http.status(500, "Failed to clear logs")
     end
@@ -392,7 +529,11 @@ function action_save_settings()
     
     uci:commit("filetransfer")
     log_to_file("Settings saved")
-    http.write_json({status = "success"})
+    if json then
+        http.write_json({status = "success"})
+    else
+        http.write('{"status": "success"}')
+    end
 end
 
 -- 获取设置函数
@@ -410,19 +551,39 @@ function action_get_settings()
     settings.enable_ssl = uci:get("filetransfer", "config", "enable_ssl") or "0"
     settings.allowed_ips = uci:get("filetransfer", "config", "allowed_ips") or ""
     
-    http.write_json(settings)
+    if json then
+        http.write_json(settings)
+    else
+        local json_str = '{'
+        local first = true
+        for key, value in pairs(settings) do
+            if not first then json_str = json_str .. ',' end
+            json_str = json_str .. '"' .. key .. '": "' .. value .. '"'
+            first = false
+        end
+        json_str = json_str .. '}'
+        http.write(json_str)
+    end
 end
 
 -- 上传进度函数
 function action_upload_progress()
     -- 实现上传进度跟踪
-    http.write_json({progress = 0})
+    if json then
+        http.write_json({progress = 0})
+    else
+        http.write('{"progress": 0}')
+    end
 end
 
 -- 下载进度函数
 function action_download_progress()
     -- 实现下载进度跟踪
-    http.write_json({progress = 0})
+    if json then
+        http.write_json({progress = 0})
+    else
+        http.write('{"progress": 0}')
+    end
 end
 
 -- 文件预览函数
@@ -449,8 +610,52 @@ function action_preview()
     if f then
         local content = f:read("*all")
         f:close()
-        http.write_json({content = content})
+        if json then
+            http.write_json({content = content})
+        else
+            http.write('{"content": "' .. content:gsub('"', '\\"') .. '"}')
+        end
     else
         http.status(500, "Failed to read file")
+    end
+end
+
+-- 错误日志处理函数
+function action_log_error()
+    -- 错误日志API不需要认证，用于调试
+    local error_type = http.formvalue("error_type")
+    local error_message = http.formvalue("error_message")
+    local error_details = http.formvalue("error_details")
+    local error_url = http.formvalue("error_url")
+    local error_user_agent = http.formvalue("error_user_agent")
+    local error_timestamp = http.formvalue("error_timestamp")
+    
+    if not error_type or not error_message then
+        http.status(400, "Bad Request")
+        return
+    end
+    
+    -- 构建错误日志条目
+    local log_entry = string.format(
+        "[%s] BROWSER_ERROR: %s - %s | URL: %s | Details: %s | User-Agent: %s",
+        error_timestamp or os.date("%Y-%m-%d %H:%M:%S"),
+        error_type,
+        error_message,
+        error_url or "unknown",
+        error_details or "none",
+        error_user_agent or "unknown"
+    )
+    
+    -- 记录到文件传输日志
+    log_to_file(log_entry)
+    
+    -- 使用系统命令记录到系统日志
+    local syslog_cmd = string.format("logger -t filetransfer 'Browser Error: %s - %s'", error_type, error_message)
+    os.execute(syslog_cmd)
+    
+    if json then
+        http.write_json({status = "success", message = "Error logged successfully"})
+    else
+        http.write('{"status": "success", "message": "Error logged successfully"}')
     end
 end
