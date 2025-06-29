@@ -184,109 +184,94 @@ end
 function action_upload()
     ensure_upload_dir()
     
-    -- 获取上传的文件
-    local file = http.formvalue("file")
-    local filename = http.formvalue("filename")
+    -- 使用正确的文件处理方式
+    local upload_info = nil
     
-    log_to_file("收到上传请求，文件参数类型: " .. type(file))
+    -- 设置文件处理器来正确接收文件内容
+    http.setfilehandler(
+        function(meta, chunk, eof)
+            if not upload_info then
+                -- 初始化上传信息
+                local filename = meta.name or meta.file
+                if not filename then
+                    log_to_file("上传文件名缺失")
+                    return
+                end
+                
+                filename = sanitize_filename(filename)
+                if not filename then
+                    log_to_file("文件名不合法: " .. tostring(meta.name or meta.file))
+                    return
+                end
+                
+                if not check_file_type(filename) then
+                    log_to_file("文件类型不允许: " .. filename)
+                    return
+                end
+                
+                local filepath = UPLOAD_DIR .. filename
+                local file_handle = io.open(filepath, "wb")
+                if not file_handle then
+                    log_to_file("无法创建文件: " .. filepath)
+                    return
+                end
+                
+                upload_info = {
+                    handle = file_handle,
+                    filename = filename,
+                    filepath = filepath,
+                    size = 0
+                }
+                
+                log_to_file("开始上传文件: " .. filename)
+            end
+            
+            -- 写入文件块
+            if chunk and upload_info and upload_info.handle then
+                upload_info.handle:write(chunk)
+                upload_info.size = upload_info.size + #chunk
+                
+                -- 检查文件大小
+                if upload_info.size > MAX_FILE_SIZE then
+                    upload_info.handle:close()
+                    fs.unlink(upload_info.filepath)
+                    log_to_file("文件过大，上传终止: " .. upload_info.filename)
+                    upload_info = nil
+                    return
+                end
+            end
+            
+            -- 文件上传完成
+            if eof and upload_info and upload_info.handle then
+                upload_info.handle:close()
+                log_to_file("文件上传完成: " .. upload_info.filename .. ", 大小: " .. upload_info.size)
+                
+                -- 存储到全局变量供后续使用
+                http.context.upload_result = upload_info
+            end
+        end
+    )
     
-    if not file then
-        log_to_file("没有接收到文件数据")
-        http.status(400, "No file uploaded")
-        return
-    end
+    -- 获取表单数据以触发文件处理
+    local form_data = http.formvalue()
     
-    -- 处理文件对象
-    local file_content = nil
-    local file_name = filename
-    
-    if type(file) == "table" then
-        -- 处理table类型的文件对象
-        if file.content then
-            file_content = file.content
-        elseif file.data then
-            file_content = file.data
+    -- 检查上传结果
+    if http.context.upload_result then
+        local result = http.context.upload_result
+        if json then
+            http.write_json({
+                status = "success", 
+                filename = result.filename,
+                path = result.filepath,
+                size = result.size
+            })
         else
-            -- 尝试直接使用file作为内容
-            file_content = tostring(file)
+            http.write(string.format('{"status": "success", "filename": "%s", "path": "%s", "size": %d}',
+                result.filename, result.filepath, result.size))
         end
-        
-        -- 获取文件名
-        if not file_name and file.filename then
-            file_name = file.filename
-        elseif not file_name and file.name then
-            file_name = file.name
-        end
-        
-        log_to_file("处理table类型文件，文件名: " .. tostring(file_name) .. ", 内容长度: " .. tostring(file_content and #file_content or 0))
-    elseif type(file) == "string" then
-        file_content = file
-        log_to_file("处理string类型文件，内容长度: " .. #file_content)
     else
-        log_to_file("未知的文件类型: " .. type(file))
-        http.status(400, "Invalid file format")
-        return
-    end
-    
-    if not file_content or #file_content == 0 then
-        log_to_file("文件内容为空")
-        http.status(400, "Empty file")
-        return
-    end
-    
-    if not file_name then
-        log_to_file("文件名缺失")
-        http.status(400, "Filename missing")
-        return
-    end
-    
-    -- 清理文件名
-    file_name = sanitize_filename(file_name)
-    if not file_name then
-        log_to_file("文件名不合法")
-        http.status(400, "Invalid filename")
-        return
-    end
-    
-    -- 检查文件类型
-    if not check_file_type(file_name) then
-        log_to_file("文件类型不允许: " .. file_name)
-        http.status(400, "File type not allowed")
-        return
-    end
-    
-    -- 检查文件大小
-    if not check_file_size(#file_content) then
-        log_to_file("文件过大: " .. file_name .. ", 大小: " .. #file_content)
-        http.status(400, "File too large")
-        return
-    end
-    
-    -- 保存文件
-    local filepath = UPLOAD_DIR .. file_name
-    local f = io.open(filepath, "w+b")
-    if not f then
-        log_to_file("无法创建文件: " .. filepath)
-        http.status(500, "Failed to create file")
-        return
-    end
-    
-    f:write(file_content)
-    f:close()
-    
-    log_to_file("文件上传成功: " .. file_name .. ", 大小: " .. #file_content .. ", 路径: " .. filepath)
-    
-    -- 返回成功响应
-    if json then
-        http.write_json({
-            status = "success", 
-            filename = file_name,
-            path = filepath,
-            size = #file_content
-        })
-    else
-        http.write(string.format('{"status": "success", "filename": "%s", "path": "%s", "size": %d}',
-            file_name, filepath, #file_content))
+        log_to_file("没有接收到文件上传数据")
+        http.status(400, "No file uploaded")
     end
 end
 
