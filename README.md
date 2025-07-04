@@ -39,7 +39,7 @@
 在 OpenWRT 设备上运行：
 
 ```bash
-wget -O - https://raw.githubusercontent.com/DustReliant/luci-app-filetransfer/master/install.sh | sh
+
 ```
 
 ### 方法2：手动安装
