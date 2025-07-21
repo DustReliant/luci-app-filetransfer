@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-filetransfer
-PKG_VERSION:=1.2.0
+PKG_VERSION:=1.3.0
 # 使用 Git 提交数量作为 PKG_RELEASE 的值
 PKG_RELEASE:=$(shell git rev-list --count HEAD 2>/dev/null || echo "1")
 
@@ -13,12 +13,15 @@ define Package/luci-app-filetransfer
 	SECTION:=luci
 	CATEGORY:=LuCI
 	SUBMENU:=3. Applications
-	TITLE:=file transfer tool
+	TITLE:=LuCI File Transfer and Management Tool
 	PKGARCH:=all
+	DEPENDS:=+luci-base +luci-lib-jsonc +nixio
 endef
 
 define Package/luci-app-filetransfer/description
-	This package contains LuCI configuration pages for file transfer.
+	A comprehensive LuCI web interface for file transfer and management.
+	Features include: file upload/download, file management, IPK installation,
+	real-time logging, error monitoring, and security controls.
 endef
 
 define Build/Prepare
@@ -60,47 +63,14 @@ define Package/$(PKG_NAME)/install
 	# 安装视图文件
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/filetransfer
 	$(INSTALL_DATA) ./luasrc/view/filetransfer/* $(1)/usr/lib/lua/luci/view/filetransfer/
-endef
-
-# 添加 i18n 支持
-define Package/luci-i18n-filetransfer-zh-cn
-	SECTION:=luci
-	CATEGORY:=LuCI
-	SUBMENU:=4. Translations
-	TITLE:=filetransfer Chinese Simplified
-	PKGARCH:=all
-	DEPENDS:=luci-app-filetransfer
-endef
-
-define Package/luci-i18n-filetransfer-zh-cn/description
-	Translation for luci-app-filetransfer - 简体中文 (Chinese Simplified)
-endef
-
-define Package/luci-i18n-filetransfer-zh-cn/install
+	
+	# 安装中文翻译文件
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 	$(INSTALL_DATA) ./po/filetransfer.zh-cn.lmo $(1)/usr/lib/lua/luci/i18n/filetransfer.zh-cn.lmo
 endef
 
-define Package/luci-i18n-filetransfer-en
-	SECTION:=luci
-	CATEGORY:=LuCI
-	SUBMENU:=4. Translations
-	TITLE:=filetransfer English
-	PKGARCH:=all
-	DEPENDS:=luci-app-filetransfer
-endef
 
-define Package/luci-i18n-filetransfer-en/description
-	Translation for luci-app-filetransfer - English
-endef
-
-define Package/luci-i18n-filetransfer-en/install
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
-	$(INSTALL_DATA) ./po/filetransfer.en.lmo $(1)/usr/lib/lua/luci/i18n/filetransfer.en.lmo
-endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
-$(eval $(call BuildPackage,luci-i18n-filetransfer-zh-cn))
-$(eval $(call BuildPackage,luci-i18n-filetransfer-en))

@@ -46,28 +46,158 @@ local ALLOWED_EXTENSIONS = {
     json = true
 }
 
--- 记录日志到文件的函数
-function log_to_file(message)
-    local log_file = "/tmp/filetransfer.log"
-    local file = io.open(log_file, "a")
-    if file then
-        file:write(os.date("%Y-%m-%d %H:%M:%S") .. " - " .. message .. "\n")
-        file:close()
+-- 配置读取函数
+local function get_config()
+    local config = {
+        UPLOAD_DIR = "/tmp/upload/",
+        MAX_FILE_SIZE = 50 * 1024 * 1024,
+        LOG_LEVEL = "info",
+        ENABLE_CSRF = true,
+        ALLOWED_IPS = "",
+        ALLOWED_EXTENSIONS = {ipk = true, tar = true, gz = true, zip = true, txt = true, conf = true, json = true}
+    }
+    
+    -- 尝试从UCI读取配置
+    local uci = require "luci.model.uci".cursor()
+    if uci then
+        uci:load("filetransfer")
+        config.UPLOAD_DIR = uci:get("filetransfer", "config", "upload_dir") or config.UPLOAD_DIR
+        config.MAX_FILE_SIZE = tonumber(uci:get("filetransfer", "config", "max_file_size") or "50") * 1024 * 1024
+        config.LOG_LEVEL = uci:get("filetransfer", "config", "log_level") or config.LOG_LEVEL
+        config.ENABLE_CSRF = uci:get("filetransfer", "config", "enable_csrf") ~= "0"
+        config.ALLOWED_IPS = uci:get("filetransfer", "config", "allowed_ips") or ""
+        
+        -- 解析允许的文件扩展名
+        local extensions_str = uci:get("filetransfer", "config", "allowed_extensions") or "ipk,tar,gz,zip,txt,conf,json"
+        config.ALLOWED_EXTENSIONS = {}
+        for ext in extensions_str:gmatch("[^,]+") do
+            config.ALLOWED_EXTENSIONS[ext:gsub("%s+", "")] = true
+        end
+    end
+    
+    return config
+end
+
+-- 结构化日志记录函数
+local function log_message(level, message, context)
+    local config = get_config()
+    local log_levels = {debug = 1, info = 2, warning = 3, error = 4}
+    local current_level = log_levels[config.LOG_LEVEL] or 2
+    
+    if log_levels[level] >= current_level then
+        local file = io.open(log_file, "a")
+        if file then
+            local log_entry = {
+                timestamp = os.date("%Y-%m-%d %H:%M:%S"),
+                level = level:upper(),
+                message = message,
+                context = context or {}
+            }
+            
+            local log_line = string.format("[%s] %s: %s", 
+                log_entry.timestamp, log_entry.level, log_entry.message)
+            
+            if next(log_entry.context) then
+                log_line = log_line .. " | " .. table.concat(log_entry.context, ", ")
+            end
+            
+            file:write(log_line .. "\n")
+            file:close()
+        end
     end
 end
 
--- 检查 CSRF Token
+-- 兼容旧函数
+function log_to_file(message)
+    log_message("info", message)
+end
+
+-- 统一错误响应函数
+local function send_error_response(status_code, error_code, message, details)
+    http.status(status_code, message)
+    local response = {
+        error = true,
+        code = error_code,
+        message = message,
+        details = details or {},
+        timestamp = os.time()
+    }
+    
+    if json then
+        http.write_json(response)
+    else
+        http.write(string.format('{"error":true,"code":"%s","message":"%s","timestamp":%d}',
+            error_code, message, response.timestamp))
+    end
+    
+    log_message("error", message, {error_code, tostring(details)})
+end
+
+-- 统一成功响应函数
+local function send_success_response(data, message)
+    local response = {
+        success = true,
+        message = message or "Operation completed successfully",
+        data = data or {},
+        timestamp = os.time()
+    }
+    
+    if json then
+        http.write_json(response)
+    else
+        http.write('{"success":true,"message":"' .. response.message .. '","timestamp":' .. response.timestamp .. '}')
+    end
+end
+
+-- IP地址白名单检查
+local function check_ip_whitelist()
+    local config = get_config()
+    if not config.ALLOWED_IPS or config.ALLOWED_IPS == "" then
+        return true
+    end
+    
+    local client_ip = http.getenv("REMOTE_ADDR")
+    for ip in config.ALLOWED_IPS:gmatch("[^,]+") do
+        if client_ip == ip:gsub("%s+", "") then
+            return true
+        end
+    end
+    
+    log_message("warning", "IP address not in whitelist", {client_ip})
+    return false
+end
+
+-- 增强的CSRF检查
 local function check_csrf()
+    local config = get_config()
+    if not config.ENABLE_CSRF then
+        return true
+    end
+    
+    -- 检查请求方法
+    local method = http.getenv("REQUEST_METHOD")
+    if method == "GET" then
+        return true -- GET请求通常不需要CSRF保护
+    end
+    
     -- 首先尝试使用系统自带的 CSRF 验证
     if luci.csrf and luci.csrf.check_token then
         return luci.csrf.check_token()
     end
     
     -- 如果系统没有 CSRF 验证，使用自定义实现
-    local token = http.getcookie("csrf_token")
-    local form_token = http.formvalue("csrf_token")
+    local token_cookie = http.getcookie("csrf_token")
+    local token_header = http.getenv("HTTP_X_CSRF_TOKEN")
+    local token_form = http.formvalue("csrf_token")
     
-    if not token or not form_token or token ~= form_token then
+    local submitted_token = token_header or token_form
+    
+    if not token_cookie or not submitted_token or token_cookie ~= submitted_token then
+        log_message("warning", "CSRF token validation failed", {
+            "cookie=" .. tostring(token_cookie),
+            "submitted=" .. tostring(submitted_token),
+            "method=" .. tostring(method)
+        })
         return false
     end
     
@@ -83,22 +213,26 @@ end
 
 -- 检查文件类型
 local function check_file_type(filename)
+    local config = get_config()
     local ext = filename:match("%.([^%.]+)$")
     if not ext then
-        -- 没有扩展名的文件暂时允许
-        log_to_file("DEBUG: 文件没有扩展名: " .. filename)
-        return true
+        log_message("debug", "文件没有扩展名", {filename})
+        return false
     end
-    local allowed = ALLOWED_EXTENSIONS[ext:lower()]
-    if not allowed then
-        log_to_file("DEBUG: 不允许的扩展名: " .. ext)
+    
+    ext = ext:lower()
+    if not config.ALLOWED_EXTENSIONS[ext] then
+        log_message("debug", "不允许的扩展名", {ext, filename})
+        return false
     end
-    return allowed
+    
+    return true, ext
 end
 
 -- 检查文件大小
 local function check_file_size(size)
-    return size and size <= MAX_FILE_SIZE
+    local config = get_config()
+    return size and size <= config.MAX_FILE_SIZE
 end
 
 -- 安全地获取文件名
@@ -131,10 +265,11 @@ end
 
 -- 确保上传目录存在并有正确的权限
 local function ensure_upload_dir()
-    if not fs.stat(UPLOAD_DIR) then
-        fs.mkdir(UPLOAD_DIR)
+    local config = get_config()
+    if not fs.stat(config.UPLOAD_DIR) then
+        fs.mkdirr(config.UPLOAD_DIR)
     end
-    fs.chmod(UPLOAD_DIR, 755)
+    fs.chmod(config.UPLOAD_DIR, 755)
 end
 
 -- 设置 CSRF 令牌
@@ -196,10 +331,23 @@ end
 
 -- 文件上传处理函数
 function action_upload()
-    log_to_file("=== 开始处理文件上传请求 ===")
-    log_to_file("请求方法: " .. (http.getenv("REQUEST_METHOD") or "unknown"))
-    log_to_file("内容类型: " .. (http.getenv("CONTENT_TYPE") or "unknown"))
-    log_to_file("内容长度: " .. (http.getenv("CONTENT_LENGTH") or "unknown"))
+    log_message("info", "开始处理文件上传请求", {
+        "method=" .. (http.getenv("REQUEST_METHOD") or "unknown"),
+        "content_type=" .. (http.getenv("CONTENT_TYPE") or "unknown"),
+        "content_length=" .. (http.getenv("CONTENT_LENGTH") or "unknown")
+    })
+    
+    -- 检查CSRF token
+    if not check_csrf() then
+        send_error_response(403, "CSRF_FAILED", "CSRF token validation failed")
+        return
+    end
+    
+    -- 检查IP白名单
+    if not check_ip_whitelist() then
+        send_error_response(403, "IP_BLOCKED", "IP address not in whitelist")
+        return
+    end
     
     -- 添加错误处理包装
     local status, err = pcall(function()
@@ -231,7 +379,8 @@ function action_upload()
                         return
                     end
                     
-                    local filepath = UPLOAD_DIR .. filename
+                    local config = get_config()
+                    local filepath = config.UPLOAD_DIR .. filename
                     local file_handle = io.open(filepath, "wb")
                     if not file_handle then
                         log_to_file("无法创建文件: " .. filepath)
@@ -307,17 +456,18 @@ end
 function action_download()
     local filename = http.formvalue("filename")
     if not filename then
-        http.status(400, "Bad Request")
+        send_error_response(400, "MISSING_FILENAME", "Filename parameter is required")
         return
     end
     
     filename = sanitize_filename(filename)
     if not filename then
-        http.status(400, "Invalid filename")
+        send_error_response(400, "INVALID_FILENAME", "Invalid filename")
         return
     end
     
-    local path = UPLOAD_DIR .. filename
+    local config = get_config()
+    local path = config.UPLOAD_DIR .. filename
     if not fs.stat(path) then
         http.status(404, "File not found")
         return
@@ -336,10 +486,35 @@ function action_download()
     end
 end
 
--- 文件列表获取函数
+-- 文件列表获取函数（优化版本）
 function action_list()
+    local config = get_config()
     local files = {}
-    local dir = io.popen("ls -la '" .. UPLOAD_DIR .. "'")
+    
+    -- 使用 nixio.fs 替代 shell 命令提高性能
+    for name in fs.dir(config.UPLOAD_DIR) do
+        if name ~= "." and name ~= ".." then
+            local path = config.UPLOAD_DIR .. name
+            local stat = fs.stat(path)
+            if stat and stat.type == "reg" then
+                table.insert(files, {
+                    name = name,
+                    size = tostring(stat.size),
+                    date = os.date("%m-%d %H:%M", stat.mtime),
+                    mtime = stat.mtime
+                })
+            end
+        end
+    end
+    
+    send_success_response({files = files}, "File list retrieved successfully")
+end
+
+-- 备用的文件列表获取函数（如果nixio.fs不可用）
+function action_list_fallback()
+    local config = get_config()
+    local files = {}
+    local dir = io.popen("ls -la '" .. config.UPLOAD_DIR .. "'")
     if dir then
         for line in dir:lines() do
             local file = {}
@@ -359,64 +534,64 @@ function action_list()
         end
         dir:close()
     end
-    if json then
-        http.write_json({files = files})
-    else
-        local json_str = '{"files": ['
-        for i, file in ipairs(files) do
-            if i > 1 then json_str = json_str .. ',' end
-            json_str = json_str .. string.format('{"name": "%s", "size": "%s", "date": "%s", "mtime": %d}', 
-                file.name, file.size, file.date, file.mtime)
-        end
-        json_str = json_str .. ']}'
-        http.write(json_str)
-    end
+    send_success_response({files = files}, "File list retrieved successfully")
 end
 
 -- 文件删除函数
 function action_delete()
+    -- 检查CSRF token
+    if not check_csrf() then
+        send_error_response(403, "CSRF_FAILED", "CSRF token validation failed")
+        return
+    end
+    
     local filename = http.formvalue("filename")
     if not filename then
-        http.status(400, "Bad Request")
+        send_error_response(400, "MISSING_FILENAME", "Filename parameter is required")
         return
     end
     
     filename = sanitize_filename(filename)
     if not filename then
-        http.status(400, "Invalid filename")
+        send_error_response(400, "INVALID_FILENAME", "Invalid filename")
         return
     end
     
-    local path = UPLOAD_DIR .. filename
+    local config = get_config()
+    local path = config.UPLOAD_DIR .. filename
     if not fs.stat(path) then
-        http.status(404, "File not found")
+        send_error_response(404, "FILE_NOT_FOUND", "File not found: " .. filename)
         return
     end
     
     if fs.unlink(path) then
-        log_to_file("File deleted: " .. filename)
-        if json then
-            http.write_json({status = "success"})
-        else
-            http.write('{"status": "success"}')
-        end
+        log_message("info", "File deleted", {filename})
+        send_success_response({filename = filename}, "File deleted successfully")
     else
-        http.status(500, "Failed to delete file")
+        send_error_response(500, "DELETE_FAILED", "Failed to delete file: " .. filename)
     end
 end
 
 -- 清空所有文件函数
 function action_clear_all()
+    -- 检查CSRF token
+    if not check_csrf() then
+        send_error_response(403, "CSRF_FAILED", "CSRF token validation failed")
+        return
+    end
+    
+    local config = get_config()
     ensure_upload_dir()
     
     local success_count = 0
     local error_count = 0
-    local dir = io.popen("ls -1 '" .. UPLOAD_DIR .. "'")
     
-    if dir then
-        for filename in dir:lines() do
-            if filename ~= "" and filename ~= "." and filename ~= ".." then
-                local path = UPLOAD_DIR .. filename
+    -- 使用 nixio.fs 提高性能
+    for name in fs.dir(config.UPLOAD_DIR) do
+        if name ~= "." and name ~= ".." then
+            local path = config.UPLOAD_DIR .. name
+            local stat = fs.stat(path)
+            if stat and stat.type == "reg" then
                 if fs.unlink(path) then
                     success_count = success_count + 1
                 else
@@ -424,75 +599,78 @@ function action_clear_all()
                 end
             end
         end
-        dir:close()
     end
     
-    if success_count > 0 then
-        log_to_file("Cleared " .. success_count .. " files from upload directory")
-    end
-    
+    local message = string.format("Cleared %d files", success_count)
     if error_count > 0 then
-        log_to_file("Failed to delete " .. error_count .. " files")
+        message = message .. string.format(", failed to delete %d files", error_count)
+        log_message("warning", "Some files failed to delete", {
+            "success=" .. success_count, "errors=" .. error_count
+        })
+    else
+        log_message("info", "All files cleared successfully", {
+            "count=" .. success_count
+        })
     end
     
-    local response = {
-        status = "success", 
-        message = "Cleared " .. success_count .. " files",
+    send_success_response({
         success_count = success_count,
         error_count = error_count
-    }
-    
-    if json then
-        http.write_json(response)
-    else
-        http.write(string.format('{"status": "success", "message": "Cleared %d files", "success_count": %d, "error_count": %d}', 
-            success_count, success_count, error_count))
-    end
+    }, message)
 end
 
 -- 安装 IPK 文件
 function action_install_ipk()
-    -- 暂时跳过CSRF检查以便测试
-    -- if not check_csrf() then
-    --     http.status(403, "CSRF token validation failed")
-    --     return
-    -- end
+    -- 检查CSRF token
+    if not check_csrf() then
+        send_error_response(403, "CSRF_FAILED", "CSRF token validation failed")
+        return
+    end
+    
+    -- 检查IP白名单
+    if not check_ip_whitelist() then
+        send_error_response(403, "IP_BLOCKED", "IP address not in whitelist")
+        return
+    end
     
     local filename = http.formvalue("filename")
     if not filename then
-        http.status(400, "Bad Request")
+        send_error_response(400, "MISSING_FILENAME", "Filename parameter is required")
         return
     end
     
     -- 安全处理文件名
     filename = sanitize_filename(filename)
     if not filename then
-        http.status(400, "Invalid filename")
+        send_error_response(400, "INVALID_FILENAME", "Invalid filename")
         return
     end
     
     if not filename:match("%.ipk$") then
-        http.status(400, "Not an IPK file")
+        send_error_response(400, "INVALID_FILE_TYPE", "File must be an IPK package")
         return
     end
     
-    local path = UPLOAD_DIR .. filename
+    local config = get_config()
+    local path = config.UPLOAD_DIR .. filename
     if not fs.stat(path) then
-        http.status(404, "File not found")
+        send_error_response(404, "FILE_NOT_FOUND", "IPK file not found: " .. filename)
         return
     end
     
     -- 安装 IPK
-    local result = sys.exec("opkg install " .. path)
-    if result:match("^Installing") then
-        log_to_file("IPK installed: " .. filename)
-        if json then
-            http.write_json({status = "success", message = result})
-        else
-            http.write('{"status": "success", "message": "' .. result .. '"}')
-        end
+    log_message("info", "Installing IPK package", {filename})
+    local result = sys.exec("opkg install '" .. path .. "' 2>&1")
+    
+    if result:match("Installing") or result:match("Upgrading") or result:match("Configuring") then
+        log_message("info", "IPK installed successfully", {filename, result})
+        send_success_response({
+            filename = filename,
+            output = result
+        }, "IPK package installed successfully")
     else
-        http.status(500, "Failed to install IPK: " .. result)
+        log_message("error", "IPK installation failed", {filename, result})
+        send_error_response(500, "INSTALL_FAILED", "Failed to install IPK package", result)
     end
 end
 
