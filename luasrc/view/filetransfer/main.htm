@@ -570,9 +570,10 @@
         formData.append('error_url', errorEntry.url);
         formData.append('error_user_agent', errorEntry.userAgent);
         formData.append('error_timestamp', errorEntry.timestamp);
-        
+        formData.append('token', '<%=token%>');
+
         // 发送错误日志到服务器
-        fetch('/cgi-bin/luci/admin/system/filetransfer/log_error', {
+        fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "log_error")%>', {
             method: 'POST',
             body: formData
         }).catch(err => {
@@ -717,7 +718,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 使用LuCI的官方上传API
         if (typeof LuCI !== 'undefined' && LuCI.ui && LuCI.ui.uploadFile) {
-            LuCI.ui.uploadFile('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "upload")%>', file, {
+            LuCI.ui.uploadFile('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "upload")%>?token=<%=token%>', file, {
                 progress: function(ev) {
                     if (ev.lengthComputable) {
                         const percentComplete = (ev.loaded / ev.total) * 100;
@@ -784,7 +785,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showMessage('<%:File upload failed%>', 'error');
             });
 
-            xhr.open('POST', '<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "upload")%>');
+            xhr.open('POST', '<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "upload")%>?token=<%=token%>');
             xhr.send(formData);
         }
     }
@@ -800,6 +801,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error fetching file list:', error);
                 showMessage('Failed to fetch file list', 'error');
             });
+    }
+
+    // HTML 转义(含引号,可安全用于属性)
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = (text === null || text === undefined) ? '' : String(text);
+        return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // 更新文件表格
@@ -828,7 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (ext === 'zip' || ext === 'tar' || ext === 'gz') icon = '🗜️';
             else if (ext === 'txt' || ext === 'conf') icon = '📝';
             else if (ext === 'json') icon = '🔢';
-            nameCell.innerHTML = `<span class="file-type-icon">${icon}</span><span title="${fname}">${fname}</span>`;
+            nameCell.innerHTML = `<span class="file-type-icon">${icon}</span><span title="${escapeHtml(fname)}">${escapeHtml(fname)}</span>`;
             
             const sizeCell = row.insertCell(1);
             sizeCell.textContent = formatFileSize(file.size);
@@ -879,7 +887,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (confirm('<%:Are you sure you want to delete file "%s"?%>'.replace('%s', filename))) {
             const formData = new FormData();
             formData.append('filename', filename);
-            
+            formData.append('token', '<%=token%>');
+
             fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "delete")%>', {
                 method: 'POST',
                 body: formData
@@ -904,7 +913,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (confirm('<%:Are you sure you want to install this IPK file?%>')) {
             const formData = new FormData();
             formData.append('filename', filename);
-            
+            formData.append('token', '<%=token%>');
+
             fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "install_ipk")%>', {
                 method: 'POST',
                 body: formData
@@ -926,8 +936,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 清空所有文件
     function clearAllFiles() {
         if (confirm('<%:Are you sure you want to delete all files?%>')) {
+            const formData = new FormData();
+            formData.append('token', '<%=token%>');
             fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "clear_all")%>', {
-                method: 'POST'
+                method: 'POST',
+                body: formData
             })
             .then(response => response.json())
             .then(data => {

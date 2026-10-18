@@ -541,10 +541,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 加载日志
     function loadLogs() {
-        fetch('/cgi-bin/luci/filetransfer/debug/get_logs')
+        fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "get_logs")%>')
             .then(response => response.json())
             .then(data => {
-                console.log('Loaded logs:', data); // 调试信息
                 allLogs = parseLogs(data);
                 displayLogs();
                 updateStats();
@@ -554,15 +553,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 logContent.innerHTML = '<div class="no-logs">Failed to load logs</div>';
             });
     }
-    
-    // 解析日志
+
+    // 解析日志(格式: [YYYY-MM-DD HH:MM:SS] LEVEL: message)
     function parseLogs(logData) {
         if (!Array.isArray(logData)) {
             logData = [logData];
         }
-        
+
         return logData.map(line => {
-            const match = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(\w+)\] (.+)$/);
+            const match = String(line).match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (\w+): (.*)$/);
             if (match) {
                 return {
                     timestamp: match[1],
@@ -627,8 +626,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // 清空日志
     window.clearLogs = function() {
         if (confirm('<%:Are you sure you want to clear all logs?%>')) {
-            fetch('/cgi-bin/luci/filetransfer/debug/clear_logs', {
-                method: 'POST'
+            const body = new URLSearchParams({ token: '<%=token%>' });
+            fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "clear_logs")%>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: body.toString()
             })
             .then(response => response.json())
             .then(data => {
@@ -647,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 导出日志
     window.exportLogs = function() {
-        window.open('/cgi-bin/luci/filetransfer/debug/export_logs', '_blank');
+        window.open('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "export_logs")%>', '_blank');
     };
     
     // 显示消息

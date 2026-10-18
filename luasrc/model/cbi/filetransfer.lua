@@ -10,7 +10,7 @@ m = Map("filetransfer", translate("File Transfer Settings"), translate("Configur
 s = m:section(NamedSection, "config", "filetransfer", translate("Basic Settings"))
 
 o = s:option(Value, "upload_dir", translate("Upload Directory"))
-o.default = "/tmp/upload"
+o.default = "/tmp/upload/"
 o.description = translate("Default directory for file uploads")
 
 o = s:option(Value, "max_file_size", translate("Maximum File Size"))

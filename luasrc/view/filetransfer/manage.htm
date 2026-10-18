@@ -10,7 +10,7 @@
 
     <div class="cbi-section">
         <div class="cbi-section-descr"><%:Browse and manage system files%></div>
-        
+
         <!-- 简洁的地址栏 -->
         <div class="path-bar">
             <input type="text" id="current-path" value="/" placeholder="<%:Enter path...%>" class="path-input">
@@ -24,7 +24,7 @@
                 <div class="loading" id="loading"><%:Loading...%></div>
             </div>
         </div>
-        
+
         <!-- 状态栏 -->
         <div class="status-bar">
             <span id="file-count">0 <%:items%></span>
@@ -147,6 +147,7 @@
     flex: 1;
     font-weight: 500;
     color: #333;
+    word-break: break-all;
 }
 
 .file-info {
@@ -164,26 +165,6 @@
 
 .file-date {
     min-width: 120px;
-}
-
-.file-actions {
-    display: flex;
-    gap: 5px;
-}
-
-.btn-sm {
-    padding: 4px 8px;
-    font-size: 12px;
-}
-
-.btn-success {
-    background: #28a745;
-    color: white;
-}
-
-.btn-danger {
-    background: #dc3545;
-    color: white;
 }
 
 .loading {
@@ -205,20 +186,15 @@
     .path-bar {
         flex-direction: column;
     }
-    
+
     .file-info {
         display: none;
     }
-    
+
     .file-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
-    }
-    
-    .file-actions {
-        width: 100%;
-        justify-content: flex-end;
     }
 }
 </style>
@@ -226,28 +202,29 @@
 <script>
 let currentPath = '/';
 
-// 错误日志记录函数
+// HTML 转义(含引号,可安全用于属性)
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = (text === null || text === undefined) ? '' : String(text);
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// 错误上报(走需鉴权的管理接口)
 function logError(type, message, details) {
-    const errorData = {
-        type: type || 'error',
-        message: message || 'Unknown error',
-        details: details || '',
-        url: window.location.href
-    };
-    
-    console.log('Logging error:', errorData); // 调试信息
-    
-    // 发送到调试API（不需要认证）
-    fetch('/cgi-bin/luci/filetransfer/debug/log_error', {
+    const body = new URLSearchParams({
+        error_type: type || 'error',
+        error_message: message || 'Unknown error',
+        error_details: details || '',
+        error_url: window.location.href,
+        token: '<%=token%>'
+    });
+
+    fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "log_error")%>', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: Object.keys(errorData).map(key => 
-            encodeURIComponent(key) + '=' + encodeURIComponent(errorData[key])
-        ).join('&')
-    }).then(response => {
-        console.log('Error logged successfully:', response.status);
+        body: body.toString()
     }).catch(err => {
         console.error('Failed to log error:', err);
     });
@@ -256,107 +233,82 @@ function logError(type, message, details) {
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', function() {
     refreshFiles();
+
+    // 事件委托处理文件夹导航,避免内联 onclick 被特殊字符破坏
+    document.getElementById('file-list').addEventListener('click', function(e) {
+        const item = e.target.closest('.file-item[data-path]');
+        if (item) {
+            navigateTo(item.getAttribute('data-path'));
+        }
+    });
 });
 
 // 导航到指定路径
 function navigateTo(path) {
-    // 规范化路径
-    path = path.replace(/\/+/g, '/');
+    path = String(path || '/').replace(/\/+/g, '/');
     if (path !== '/' && path.endsWith('/')) {
         path = path.slice(0, -1);
     }
-    
-    currentPath = path;
-    document.getElementById('current-path').value = path;
+    if (!path.startsWith('/')) {
+        path = '/' + path;
+    }
+
+    currentPath = path || '/';
+    document.getElementById('current-path').value = currentPath;
     refreshFiles();
 }
 
 // 从地址栏导航
 function navigateToPath() {
-    const path = document.getElementById('current-path').value;
-    navigateTo(path);
-}
-
-// 导航到文件夹（专门用于点击文件夹）
-function navigateToFolder(path) {
-    console.log('Navigating to folder:', path); // 调试信息
-    navigateTo(path);
+    navigateTo(document.getElementById('current-path').value);
 }
 
 // 刷新文件列表
 function refreshFiles() {
     const fileList = document.getElementById('file-list');
-    
+
     fileList.innerHTML = '<div class="loading"><%:Loading...%></div>';
-    
-    // 发送请求获取文件列表
-    fetch('/cgi-bin/luci/admin/system/filetransfer/browse_files', {
+
+    const body = new URLSearchParams({
+        path: currentPath,
+        token: '<%=token%>'
+    });
+
+    fetch('<%=luci.dispatcher.build_url("admin", "system", "filetransfer", "browse_files")%>', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `path=${encodeURIComponent(currentPath)}`
+        body: body.toString()
     })
     .then(response => {
         if (!response.ok) {
-            logError('HTTP_ERROR', `HTTP ${response.status}: ${response.statusText}`, 'browse_files API请求失败');
+            logError('HTTP_ERROR', `HTTP ${response.status}: ${response.statusText}`, 'browse_files');
             throw new Error(`HTTP ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('API Response:', data); // 调试信息
         if (data.status === 'success') {
             displayFiles(data.files || []);
-            updateFileCount(data.files ? data.files.length : 0);
         } else {
-            logError('API_ERROR', 'API返回错误状态', JSON.stringify(data));
-            throw new Error('API returned error status');
+            throw new Error(data.message || 'API returned error status');
         }
     })
     .catch(error => {
         console.error('Error loading files:', error);
-        logError('FETCH_ERROR', error.message, `获取文件列表失败，当前路径: ${currentPath}`);
-        // 显示示例文件列表作为fallback
-        displaySampleFiles();
+        logError('FETCH_ERROR', error.message, `current path: ${currentPath}`);
+        fileList.innerHTML = '<div class="loading"><%:Failed to load file list:%> ' + escapeHtml(error.message) + '</div>';
+        updateFileCount(0);
     });
-}
-
-// 显示示例文件列表（当API不可用时）
-function displaySampleFiles() {
-    const sampleFiles = [];
-    
-    // 如果不是根目录，添加返回上级目录
-    if (currentPath !== '/') {
-        sampleFiles.push({
-            name: '..',
-            type: 'directory',
-            size: 0,
-            modified: '',
-            permissions: 'drwxr-xr-x',
-            path: currentPath.split('/').slice(0, -1).join('/') || '/'
-        });
-    }
-    
-    // 添加示例文件夹和文件
-    if (currentPath === '/') {
-        sampleFiles.push(
-            { name: 'bin', type: 'directory', size: 0, modified: '2024-06-29 09:30', permissions: 'drwxr-xr-x' },
-            { name: 'etc', type: 'directory', size: 0, modified: '2024-06-29 09:25', permissions: 'drwxr-xr-x' },
-            { name: 'tmp', type: 'directory', size: 0, modified: '2024-06-29 10:05', permissions: 'drwxrwxrwx' },
-            { name: 'usr', type: 'directory', size: 0, modified: '2024-06-29 09:20', permissions: 'drwxr-xr-x' },
-            { name: 'var', type: 'directory', size: 0, modified: '2024-06-29 09:15', permissions: 'drwxr-xr-x' }
-        );
-    }
-    
-    displayFiles(sampleFiles);
-    updateFileCount(sampleFiles.length);
 }
 
 // 显示文件列表
 function displayFiles(files) {
     const fileList = document.getElementById('file-list');
-    
+
+    updateFileCount(files.length);
+
     if (files.length === 0) {
         fileList.innerHTML = '<div class="loading"><%:No files found%></div>';
         return;
@@ -367,54 +319,31 @@ function displayFiles(files) {
         const isFolder = file.type === 'directory';
         const icon = isFolder ? '📁' : '📄';
         const sizeDisplay = isFolder ? '-' : formatFileSize(file.size);
-        
-        // 构建目标路径
-        let targetPath;
-        if (file.name === '..') {
-            // 上级目录 - 使用服务器返回的path字段或者自己计算
-            if (file.path) {
-                targetPath = file.path;
-            } else {
-                const parts = currentPath.split('/').filter(p => p);
-                parts.pop();
-                targetPath = parts.length > 0 ? '/' + parts.join('/') : '/';
-            }
-        } else {
-            // 普通文件夹或文件 - 优先使用服务器返回的path字段
-            if (file.path) {
-                targetPath = file.path;
-            } else {
-                targetPath = currentPath === '/' ? '/' + file.name : currentPath + '/' + file.name;
-            }
-        }
-        
+        const safeName = escapeHtml(file.name);
+        const safePath = escapeHtml(file.path || '');
+        const safeDate = escapeHtml(file.modified || '');
+
         html += `
-            <div class="file-item ${isFolder ? 'folder' : ''}" ${isFolder ? `onclick="navigateToFolder('${targetPath}')" title="点击打开文件夹"` : ''}>
+            <div class="file-item ${isFolder ? 'folder' : ''}" ${isFolder ? `data-path="${safePath}" title="<%:Open this folder%>"` : ''}>
                 <div class="file-icon">${icon}</div>
-                <div class="file-name">${file.name}</div>
+                <div class="file-name">${safeName}</div>
                 <div class="file-info">
                     <div class="file-size">${sizeDisplay}</div>
-                    <div class="file-date">${file.modified}</div>
+                    <div class="file-date">${safeDate}</div>
                 </div>
-                ${!isFolder ? `
-                <div class="file-actions">
-                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); downloadFile('${file.name}')"><%:Download%></button>
-                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteFile('${file.name}')"><%:Delete%></button>
-                </div>
-                ` : ''}
             </div>
         `;
     });
-    
+
     fileList.innerHTML = html;
 }
 
 // 格式化文件大小
 function formatFileSize(bytes) {
-    if (bytes === 0) return '0 B';
+    if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
@@ -422,35 +351,6 @@ function formatFileSize(bytes) {
 function updateFileCount(count) {
     document.getElementById('file-count').textContent = `${count} <%:items%>`;
 }
-
-// 文件操作
-function downloadFile(filename) {
-    window.location.href = `/cgi-bin/luci/admin/system/filetransfer/download?filename=${encodeURIComponent(filename)}`;
-}
-
-function deleteFile(filename) {
-    if (confirm(`<%:Are you sure you want to delete%> "${filename}"?`)) {
-        fetch('/cgi-bin/luci/admin/system/filetransfer/delete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `filename=${encodeURIComponent(filename)}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                refreshFiles();
-            } else {
-                alert('删除失败');
-            }
-        })
-        .catch(error => {
-            console.error('删除错误:', error);
-            alert('删除失败');
-        });
-    }
-}
 </script>
 
-<%+footer%> 
+<%+footer%>
